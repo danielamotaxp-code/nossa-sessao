@@ -37,6 +37,10 @@ create table if not exists avaliacoes (
   primary key (filme_id, user_id)
 );
 
+-- Acesso pela API (só para quem entrou com conta).
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on perfis, filmes, avaliacoes to authenticated;
+
 -- Segurança: só quem entrou com conta vê e mexe; cada um só mexe na própria nota.
 alter table perfis enable row level security;
 alter table filmes enable row level security;
