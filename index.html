@@ -174,6 +174,14 @@ h4{font:400 30px/1.2 "Instrument Serif",serif;margin:30px 0 8px}
 .lab{font-size:14px;font-weight:700;margin-top:12px;display:block}
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 6px}
 .chip{border:1px solid var(--line);background:#ffffff08;border-radius:999px;padding:8px 14px;font-size:14px;min-height:40px;transition:all .2s}
+.prog{height:6px;border-radius:9px;background:#ffffff14;overflow:hidden;margin:-4px 0 14px}.prog i{display:block;height:100%;background:linear-gradient(90deg,#c2185b,var(--rose));border-radius:9px;transition:width .4s}
+.seasons{display:grid;gap:8px;margin-bottom:8px}.season{border:1px solid var(--line);border-radius:16px;background:#ffffff06;overflow:hidden}
+.shead{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 4px}.stog{flex:1;display:flex;align-items:center;gap:10px;background:none;border:0;color:inherit;font-family:inherit;font-weight:600;font-size:15px;line-height:1.2;padding:10px;text-align:left;cursor:pointer;min-height:44px}.stog em{margin-left:auto;font-style:normal;color:var(--mute);font-size:13px}
+.car{display:inline-block;transition:transform .2s;color:var(--mute);font-size:20px;line-height:1}.season.open .car{transform:rotate(90deg)}
+.sall{border:1px solid var(--line);background:none;color:var(--blush);border-radius:999px;padding:7px 12px;font-family:inherit;font-weight:600;font-size:13px;white-space:nowrap;min-height:36px;cursor:pointer}.sall.on{background:#4fd1a026;border-color:var(--ok);color:#b8f5dc}
+.eps{display:grid;border-top:1px solid var(--line)}.ep{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #ffffff0d;cursor:pointer;min-height:48px}.ep:last-child{border-bottom:0}
+.ep input{appearance:none;-webkit-appearance:none;width:24px;height:24px;border-radius:7px;border:2px solid #ffffff40;flex:none;display:grid;place-items:center;margin:0;cursor:pointer}.ep input:checked{background:var(--rose);border-color:var(--rose)}.ep input:checked::after{content:'✓';color:#fff;font-size:15px;font-weight:800}
+.ep .en{color:var(--mute);font-variant-numeric:tabular-nums;width:22px;text-align:right;flex:none}.ep .et{flex:1;line-height:1.3}.ep .et small{display:block;color:var(--mute);font-size:12px}.ep.on .et{color:var(--mute)}.ep.fut{opacity:.55}
 .chip:hover{background:#ffffff14}
 .chip.ed{display:inline-flex;align-items:center;padding:0;overflow:hidden;border-color:#ffffff30}.chip.ed>button{padding:8px 12px;min-height:40px;color:inherit;background:none;border:0;font:inherit;cursor:pointer}.chip.ed .x2{border-left:1px solid #ffffff22;color:#ffb3c2}
 .chip.rm{border-color:var(--rose);color:#ffd0da;background:#ff4f7214}.chip.edit{border-style:dashed;color:var(--mute)}
@@ -359,7 +367,7 @@ const optsOf=k=>{const col=tipoOf(k);let o;if(S.cards)o=new Set(S.cards.filter(c
 const NEG=['Arrastado','Previsível','Final fraco','Confuso','Longo demais','Atuações fracas','Clichê','Sem graça','Roteiro furado','Não envelheceu bem'];
 const LBL=['','Horrível','Péssimo','Ruim','Fraco','Mais ou menos','Ok','Bom','Muito bom','Ótimo','Obra-prima'];
 const DUR=8000;
-const S={kind:(()=>{try{return localStorage.getItem('kind')==='serie'?'serie':'filme'}catch(_){return'filme'}})(),user:null,perfis:{},films:new Map(),rates:new Map(),tab:'quero',q:'',sort:'recentes',open:null,draft:null,found:[],hero:[],heroKey:'',hi:0,paused:false,ribbonKey:'',confirmDel:false,signup:false,busy:false};
+const S={eps:new Map(),tv:{},openSeason:null,kind:(()=>{try{return localStorage.getItem('kind')==='serie'?'serie':'filme'}catch(_){return'filme'}})(),user:null,perfis:{},films:new Map(),rates:new Map(),tab:'quero',q:'',sort:'recentes',open:null,draft:null,found:[],hero:[],heroKey:'',hi:0,paused:false,ribbonKey:'',confirmDel:false,signup:false,busy:false};
 let sb=null,tt,ht;
 const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',3200)};
 const fmt=n=>n.toLocaleString('pt-BR',{maximumFractionDigits:1,minimumFractionDigits:n%1?1:0});
@@ -478,11 +486,11 @@ function render(){renderKind();
   }
   $('#grid').innerHTML=l.map((f,i)=>{const a=avg(f.id);
     const flag=f.status==='visto'&&!val(mine(f.id))?'<span class="badge r">Avaliar</span>':'';
-    return`<button class="card" data-id="${esc(f.id)}" style="animation-delay:${Math.min(i,14)*45}ms" type="button"><div class="cover">${poster(f)}${flag}${a?`<span class="badge">${fmt(a)}<small style="opacity:.6;font-weight:600">/10</small></span>`:''}</div><div class="meta"><b>${esc(f.titulo)}</b><span>${esc([f.ano,(f.generos||[])[0]].filter(Boolean).join(' · '))}</span></div></button>`}).join('');
+    return`<button class="card" data-id="${esc(f.id)}" style="animation-delay:${Math.min(i,14)*45}ms" type="button"><div class="cover">${poster(f)}${flag}${a?`<span class="badge">${fmt(a)}<small style="opacity:.6;font-weight:600">/10</small></span>`:''}</div><div class="meta"><b>${esc(f.titulo)}</b><span>${esc([f.ano,kindOf(f)==='serie'&&epsOf(f.id).size?epsOf(f.id).size+' ep. vistos':(f.generos||[])[0]].filter(Boolean).join(' · '))}</span></div></button>`}).join('');
 }
 
 /* ficha */
-function openDet(id){$('#det').innerHTML='';S.open=id;S.adding=null;S.editTags=false;S.confirmTag=null;S.renaming=null;S.confirmDel=false;const r=mine(id);S.draft={nota:val(r),gostou:new Set(r?.gostou||[]),naoGostou:new Set(r?.nao_gostou||[]),comentario:r?.comentario||''};renderDet();$('#ovDet').classList.add('on');$('#ovDet').scrollTop=0;document.body.style.overflow='hidden';pause(true)}
+function openDet(id){$('#det').innerHTML='';S.open=id;S.adding=null;S.editTags=false;S.confirmTag=null;S.renaming=null;S.openSeason=null;S.confirmDel=false;const r=mine(id);S.draft={nota:val(r),gostou:new Set(r?.gostou||[]),naoGostou:new Set(r?.nao_gostou||[]),comentario:r?.comentario||''};renderDet();$('#ovDet').classList.add('on');$('#ovDet').scrollTop=0;document.body.style.overflow='hidden';pause(true)}
 function roTicket(f,r){return`<h4>Avaliação individual de ${esc(nome(f.dono))}</h4><div class="ticket"><div class="who"><span class="av" style="background:linear-gradient(135deg,#7c6cff,#2f2a7a)">${esc(ini(nome(f.dono)))}</span>${esc(nome(f.dono))}<em>${r?new Date(r.em).toLocaleDateString('pt-BR'):'ainda não avaliou'}</em></div>${r?`<div class="score ro"><div class="big"><b>${val(r)}</b><small>/10</small></div><span class="slab">${LBL[val(r)]||''}</span></div><div class="scale ro" aria-hidden="true">${Array.from({length:10},(_,k)=>`<i class="seg ${k<val(r)?'on':''}" style="--k:${k+1}"></i>`).join('')}</div><div>${(r.gostou||[]).map(t=>`<span class="tag p">+ ${esc(t)}</span>`).join('')}${(r.nao_gostou||[]).map(t=>`<span class="tag n">− ${esc(t)}</span>`).join('')}</div>${r.comentario?`<p class="quote">“${esc(r.comentario)}”</p>`:''}`:'<p class="note">Só a pessoa dona deste título pode avaliar.</p>'}</div>`}
 function renderDet(){
   const ta=$('#com');if(ta&&S.draft)S.draft.comentario=ta.value;
@@ -500,9 +508,10 @@ function renderDet(){
   <div class="dbody"><div class="left"><div class="cover">${poster(f,'w500')}</div></div>
   <div><h2 class="dh">${esc(f.titulo)}</h2><p class="sub">${esc([f.original&&f.original!==f.titulo?f.original:'',f.ano,kindOf(f)==='serie'?(f.temporadas?f.temporadas+(f.temporadas>1?' temporadas':' temporada'):''):(f.duracao?f.duracao+' min':'')].filter(Boolean).join('  ·  '))}</p>
   <div class="pills">${(f.generos||[]).map(g=>`<span class="pill">${esc(g)}</span>`).join('')}</div>
-  ${f.diretor?`<p style="margin:6px 0"><span style="color:var(--mute)">Direção</span>&nbsp; ${esc(f.diretor)}</p>`:''}${(f.elenco||[]).length?`<p style="margin:6px 0"><span style="color:var(--mute)">Elenco</span>&nbsp; ${esc(f.elenco.join(', '))}</p>`:''}
+  ${f.diretor?`<p style="margin:6px 0"><span style="color:var(--mute)">${kindOf(f)==='serie'?'Criação':'Direção'}</span>&nbsp; ${esc(f.diretor)}</p>`:''}${(f.elenco||[]).length?`<p style="margin:6px 0"><span style="color:var(--mute)">Elenco</span>&nbsp; ${esc(f.elenco.join(', '))}</p>`:''}
   ${f.sinopse?`<p style="margin:14px 0 0;max-width:62ch">${esc(f.sinopse)}</p>`:''}
   <div class="row">${visto?`<button class="btn sm" data-st="quero" type="button">Voltar para a fila</button>`:`<button class="btn sm rose" data-st="visto" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Marcar como assistido</button>`}${trailerBtn(f,true)}<button class="btn sm" id="del" type="button">${S.confirmDel?'Confirmar remoção':'Remover'}</button></div>
+  ${kindOf(f)==='serie'?epsSection(f):''}
   ${visto&&ro?roTicket(f,cur):visto?`<h4>${dono?'Avaliação individual':'Avaliação do casal'}</h4>
   <div class="ticket mine"><div class="who"><span class="av">${dono?esc(ini(nome(dono))):'♥'}</span>${dono?'Sua nota':'Nota de vocês dois'}<em>${cur?(dono?`salva em ${new Date(cur.em).toLocaleDateString('pt-BR')} — só você edita`:`salva por ${esc(nome(cur.user_id))} em ${new Date(cur.em).toLocaleDateString('pt-BR')} — qualquer um pode editar`):'ainda não avaliado'}</em></div>
   <div class="score"><div class="big"><b>${d.nota||'–'}</b><small>/10</small></div><span class="slab">${d.nota?LBL[d.nota]:'Toque na barra para dar a nota'}</span></div>
@@ -520,6 +529,57 @@ function closeAll(){document.querySelectorAll('.ov').forEach(o=>o.classList.remo
 /* gravações */
 function fail(e){console.error(e);toast(/fetch|network/i.test(e?.message||'')?'Sem internet agora. Tente de novo.':'Não deu para salvar. Tente de novo.')}
 async function run(q){const{error}=await q;if(error)throw error;await loadAll()}
+/* episódios das séries */
+const epKey=(t,e)=>t+':'+e;
+const epsOf=id=>S.eps.get(id)||new Set();
+async function loadTV(f){
+  const k=f.tmdb_id;if(S.tv[k]?.loading||S.tv[k]?.seasons)return;S.tv[k]={loading:true,eps:{}};
+  try{const d=await tmdb('/tv/'+k,{language:'pt-BR'});
+    S.tv[k]={eps:{},seasons:(d.seasons||[]).filter(x=>x.season_number>0&&x.episode_count>0).map(x=>({n:x.season_number,count:x.episode_count,name:x.name,air:x.air_date}))};
+  }catch(e){console.error(e);S.tv[k]={eps:{},err:true}}
+  if(S.open===f.id)renderDet();
+}
+async function loadSeason(f,n){
+  const t=S.tv[f.tmdb_id];if(!t||t.eps[n])return;t.eps[n]='loading';
+  try{const d=await tmdb(`/tv/${f.tmdb_id}/season/${n}`,{language:'pt-BR'});t.eps[n]=(d.episodes||[]).map(e=>({e:e.episode_number,name:e.name,air:e.air_date}))}
+  catch(e){console.error(e);t.eps[n]=null}
+  if(S.open===f.id)renderDet();
+}
+const lancado=a=>!a||a<=new Date().toISOString().slice(0,10);
+function epsSection(f){
+  const t=S.tv[f.tmdb_id];if(!t){loadTV(f);return'<h4>Episódios</h4><p class="note">Carregando temporadas…</p>'}
+  if(t.loading)return'<h4>Episódios</h4><p class="note">Carregando temporadas…</p>';
+  if(t.err)return'<h4>Episódios</h4><p class="note">Não consegui carregar os episódios agora. Feche e abra de novo.</p>';
+  const seen=epsOf(f.id);const ro=f.dono&&f.dono!==S.user.id;
+  const total=t.seasons.reduce((s,x)=>s+x.count,0);const feitos=seen.size;
+  const pct=total?Math.min(100,Math.round(feitos/total*100)):0;
+  return`<h4>Episódios <span style="color:var(--mute);font-size:.8em">${feitos} de ${total} assistidos</span></h4>
+  <div class="prog"><i style="width:${pct}%"></i></div>
+  <div class="seasons">${t.seasons.map(sz=>{const n=sz.n;let c=0;for(const k of seen)if(k.startsWith(n+':'))c++;const open=S.openSeason===n;const all=c>=sz.count;
+    const eps=t.eps[n];
+    return`<div class="season ${open?'open':''}"><div class="shead"><button type="button" class="stog" data-season="${n}" aria-expanded="${open}"><span class="car">›</span>${esc(sz.name||'Temporada '+n)}<em>${c}/${sz.count}</em></button>${ro?'':`<button type="button" class="sall ${all?'on':''}" data-sall="${n}">${all?'✓ Vista':'Marcar tudo'}</button>`}</div>
+    ${open?(eps==='loading'||eps===undefined?'<p class="note" style="margin:8px 0">Carregando episódios…</p>':!eps?'<p class="note">Não consegui carregar esta temporada.</p>':`<div class="eps">${eps.map(ep=>{const on=seen.has(epKey(n,ep.e));const fut=!lancado(ep.air);return`<label class="ep ${on?'on':''} ${fut?'fut':''}"><input type="checkbox" data-ep="${n}:${ep.e}" ${on?'checked':''} ${ro?'disabled':''}><span class="en">${ep.e}</span><span class="et">${esc(ep.name||'Episódio '+ep.e)}${fut&&ep.air?`<small>estreia ${new Date(ep.air+'T12:00').toLocaleDateString('pt-BR')}</small>`:''}</span></label>`}).join('')}</div>`):''}</div>`}).join('')}</div>`;
+}
+async function setEp(f,n,e,on){
+  const set=new Set(epsOf(f.id));const k=epKey(n,e);on?set.add(k):set.delete(k);S.eps.set(f.id,set);renderDet();
+  try{const q=on?sb.from('episodios').insert([{filme_id:f.id,temporada:n,episodio:e}]):sb.from('episodios').delete().match({filme_id:f.id,temporada:n,episodio:e});
+    const{error}=await q;if(error&&!/duplicate/i.test(error.message))throw error;await checkDone(f)}catch(er){fail(er);reload()}
+}
+async function setSeason(f,n,on){
+  const t=S.tv[f.tmdb_id];const sz=t.seasons.find(x=>x.n===n);const set=new Set(epsOf(f.id));
+  let lista=t.eps[n]&&t.eps[n]!=='loading'?t.eps[n].map(x=>x.e):Array.from({length:sz.count},(_,i)=>i+1);
+  try{
+    if(on){const novos=lista.filter(e=>!set.has(epKey(n,e)));novos.forEach(e=>set.add(epKey(n,e)));S.eps.set(f.id,set);renderDet();
+      if(novos.length){const{error}=await sb.from('episodios').insert(novos.map(e=>({filme_id:f.id,temporada:n,episodio:e})));if(error&&!/duplicate/i.test(error.message))throw error}}
+    else{for(const k of[...set])if(k.startsWith(n+':'))set.delete(k);S.eps.set(f.id,set);renderDet();const{error}=await sb.from('episodios').delete().match({filme_id:f.id,temporada:n});if(error)throw error}
+    await checkDone(f);
+  }catch(er){fail(er);reload()}
+}
+async function checkDone(f){
+  const t=S.tv[f.tmdb_id];if(!t?.seasons)return;const total=t.seasons.reduce((s,x)=>s+x.count,0);
+  if(total&&epsOf(f.id).size>=total&&f.status!=='visto'){await setStatus(f.id,'visto');toast('Série completa! Foi para assistidos — hora de avaliar')}
+}
+
 async function setStatus(id,st){try{await run(sb.from('filmes').update({status:st,visto_em:st==='visto'?new Date().toISOString():null}).eq('id',id));toast(st==='visto'?'Marcado como assistido — hora de avaliar!':'Voltou para a fila')}catch(e){fail(e)}}
 async function replaceTag(k,t,neu){
   const col=tipoOf(k);const fix=a=>[...new Set((a||[]).map(x=>x===t?neu:x).filter(Boolean))];
@@ -547,6 +607,7 @@ async function addTag(){const i=$('#newTag');const t=(i?.value||'').trim().repla
   const ex=optsOf(k).find(x=>x.toLowerCase()===t.toLowerCase());S.draft[k].add(ex||t);
   if(!ex&&S.cards){const mx=Math.max(0,...S.cards.map(c=>c.ordem));const{error}=await sb.from('cards').insert({tipo:tipoOf(k),nome:t,ordem:mx+1});if(error&&!/duplicate/i.test(error.message))fail(error);else{try{await loadAll()}catch(_){}}}
   renderDet()}
+document.addEventListener('change',e=>{const c=e.target.closest('[data-ep]');if(!c)return;const f=S.films.get(S.open);if(!f)return;const[n,ep]=c.dataset.ep.split(':').map(Number);setEp(f,n,ep,c.checked)});
 document.addEventListener('keydown',e=>{if(e.target.id==='newTag'){if(e.key==='Enter'){e.preventDefault();addTag()}if(e.key==='Escape'){S.adding=null;S.renaming=null;renderDet()}}});
 async function saveRate(){
   const d=S.draft;d.comentario=$('#com').value;
@@ -604,6 +665,7 @@ document.addEventListener('click',e=>{if(e.target.closest('#importOld'))importOl
 async function loadAll(){
   const[f,a,p]=await Promise.all([sb.from('filmes').select('*'),sb.from('avaliacoes').select('*'),sb.from('perfis').select('*')]);
   if(f.error||a.error||p.error)throw f.error||a.error||p.error;
+  const er=await sb.from('episodios').select('filme_id,temporada,episodio');if(!er.error){const m=new Map();for(const x of er.data){if(!m.has(x.filme_id))m.set(x.filme_id,new Set());m.get(x.filme_id).add(x.temporada+':'+x.episodio)}S.eps=m}
   const cr=await sb.from('cards').select('*');S.cards=cr.error?null:cr.data;
   S.films=new Map(f.data.map(x=>[x.id,x]));S.rates=new Map(a.data.map(r=>[r.filme_id+'__'+r.user_id,r]));S.perfis=Object.fromEntries(p.data.map(x=>[x.id,x.nome]));
   if(S.cards&&!S.cards.length&&!S.seeding){S.seeding=true;const rows=[];let o=0;for(const[k,b]of[['gostou',POS],['naoGostou',NEG]]){const set=new Set(b);for(const f of S.films.values()){const r=casal(f.id);for(const t of r?.[tipoOf(k)]||[])set.add(t)}for(const n of set)rows.push({tipo:tipoOf(k),nome:n,ordem:o++})}const{error}=await sb.from('cards').upsert(rows,{onConflict:'tipo,nome',ignoreDuplicates:true});if(!error){const c2=await sb.from('cards').select('*');if(!c2.error)S.cards=c2.data}}
@@ -618,7 +680,7 @@ async function enter(user){
   try{await sb.from('perfis').upsert({id:user.id,nome:user.user_metadata?.nome||user.email.split('@')[0]},{onConflict:'id',ignoreDuplicates:true})}catch(e){}
   try{await loadAll()}catch(e){console.error(e);$('#status').textContent='Não consegui carregar os filmes. Confira se o banco foi criado (supabase.sql).'}
   if(/[?&]importar/.test(location.search)){history.replaceState(null,'',location.pathname);importOld()}
-  if(!channel)channel=sb.channel('nossa-sessao').on('postgres_changes',{event:'*',schema:'public',table:'filmes'},reload).on('postgres_changes',{event:'*',schema:'public',table:'avaliacoes'},reload).on('postgres_changes',{event:'*',schema:'public',table:'cards'},reload).on('postgres_changes',{event:'*',schema:'public',table:'perfis'},reload).subscribe();
+  if(!channel)channel=sb.channel('nossa-sessao').on('postgres_changes',{event:'*',schema:'public',table:'filmes'},reload).on('postgres_changes',{event:'*',schema:'public',table:'avaliacoes'},reload).on('postgres_changes',{event:'*',schema:'public',table:'cards'},reload).on('postgres_changes',{event:'*',schema:'public',table:'episodios'},reload).on('postgres_changes',{event:'*',schema:'public',table:'perfis'},reload).subscribe();
 }
 function showAuth(){S.user=null;$('#app').hidden=true;$('#auth').hidden=false;setMode(false)}
 function setMode(up){S.signup=up;$('#aNome').hidden=!up;$('#authT').textContent=up?'Criar a conta':'Bem-vindos de volta';$('#authP').textContent=up?'Cada um cria a sua conta, com o próprio e-mail.':'Entre para ver a lista de vocês dois.';$('#aBtn').textContent=up?'Criar conta':'Entrar';$('#aSwTxt').textContent=up?'Já tem conta?':'Primeira vez aqui?';$('#aSw').textContent=up?'Entrar':'Criar conta';$('#aSenha').autocomplete=up?'new-password':'current-password';$('#aErr').textContent=''}
@@ -680,6 +742,8 @@ document.addEventListener('click',e=>{if(e.target.closest('[data-close]')||e.tar
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
 $('#det').addEventListener('click',async e=>{
   const s=e.target.closest('[data-nota]');if(s){S.draft.nota=+s.dataset.nota;renderDet();return}
+  const sg=e.target.closest('[data-season]');if(sg){const n=+sg.dataset.season;S.openSeason=S.openSeason===n?null:n;const f=S.films.get(S.open);if(S.openSeason&&f)loadSeason(f,n);renderDet();return}
+  const sa=e.target.closest('[data-sall]');if(sa){const f=S.films.get(S.open);const n=+sa.dataset.sall;setSeason(f,n,!sa.classList.contains('on'));return}
   if(e.target.closest('[data-edit]')){S.editTags=!S.editTags;S.confirmTag=null;S.adding=null;S.renaming=null;renderDet();return}
   const rn=e.target.closest('[data-ren]');if(rn){S.renaming={k:rn.dataset.ren,t:rn.dataset.v};S.confirmTag=null;renderDet();setTimeout(()=>{const i=$('#newTag');if(i){i.focus();i.select()}},30);return}
   const rm=e.target.closest('[data-rm]');if(rm){const key=rm.dataset.rm+'|'+rm.dataset.v;if(S.confirmTag===key){S.confirmTag=null;removeTag(rm.dataset.rm,rm.dataset.v)}else{S.confirmTag=key;renderDet()}return}

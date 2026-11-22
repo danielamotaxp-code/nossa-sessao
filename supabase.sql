@@ -83,3 +83,17 @@ alter table public.filmes add constraint filmes_tipo_check check (tipo in ('film
 
 -- Títulos individuais: dono preenchido = lista individual daquela pessoa
 alter table public.filmes add column if not exists dono uuid references auth.users(id) on delete cascade;
+
+-- Episódios assistidos das séries
+create table if not exists public.episodios(
+  filme_id uuid not null references public.filmes(id) on delete cascade,
+  temporada int not null,
+  episodio int not null,
+  por uuid default auth.uid(),
+  em timestamptz not null default now(),
+  primary key (filme_id, temporada, episodio)
+);
+grant select, insert, update, delete on public.episodios to authenticated;
+alter table public.episodios enable row level security;
+create policy "episodios do casal" on public.episodios for all to authenticated using (true) with check (true);
+alter publication supabase_realtime add table public.episodios;
