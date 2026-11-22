@@ -74,3 +74,9 @@ alter table public.cards enable row level security;
 drop policy if exists "cards do casal" on public.cards;
 create policy "cards do casal" on public.cards for all to authenticated using (true) with check (true);
 alter publication supabase_realtime add table public.cards;
+
+-- Séries: tipo do título e número de temporadas
+alter table public.filmes add column if not exists tipo text not null default 'filme';
+alter table public.filmes add column if not exists temporadas int;
+alter table public.filmes drop constraint if exists filmes_tipo_check;
+alter table public.filmes add constraint filmes_tipo_check check (tipo in ('filme','serie'));
