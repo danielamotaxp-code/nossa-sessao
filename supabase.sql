@@ -59,3 +59,18 @@ create policy "notas: apagar a minha" on avaliacoes for delete to authenticated 
 
 -- Atualização ao vivo: o que um faz aparece na hora para o outro.
 alter publication supabase_realtime add table filmes, avaliacoes, perfis;
+
+-- Cards de avaliação compartilhados (editáveis pelos dois)
+create table if not exists public.cards(
+  id uuid primary key default gen_random_uuid(),
+  tipo text not null check (tipo in ('gostou','nao_gostou')),
+  nome text not null,
+  ordem int not null default 0,
+  criado_em timestamptz not null default now(),
+  unique (tipo, nome)
+);
+grant select, insert, update, delete on public.cards to authenticated;
+alter table public.cards enable row level security;
+drop policy if exists "cards do casal" on public.cards;
+create policy "cards do casal" on public.cards for all to authenticated using (true) with check (true);
+alter publication supabase_realtime add table public.cards;

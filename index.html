@@ -174,6 +174,7 @@ h4{font:400 30px/1.2 "Instrument Serif",serif;margin:30px 0 8px}
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 6px}
 .chip{border:1px solid var(--line);background:#ffffff08;border-radius:999px;padding:8px 14px;font-size:14px;min-height:40px;transition:all .2s}
 .chip:hover{background:#ffffff14}
+.chip.ed{display:inline-flex;align-items:center;padding:0;overflow:hidden;border-color:#ffffff30}.chip.ed>button{padding:8px 12px;min-height:40px;color:inherit;background:none;border:0;font:inherit;cursor:pointer}.chip.ed .x2{border-left:1px solid #ffffff22;color:#ffb3c2}
 .chip.rm{border-color:var(--rose);color:#ffd0da;background:#ff4f7214}.chip.edit{border-style:dashed;color:var(--mute)}
 .chip.add{border-style:dashed;color:var(--blush)}
 .addt{display:inline-flex;gap:6px;align-items:center}.addt input{background:#ffffff0d;border:1px solid var(--line);border-radius:999px;color:inherit;padding:8px 14px;font-size:16px;min-height:40px;width:190px;font-family:inherit}.addt input:focus{outline:none;border-color:var(--rose)}
@@ -344,7 +345,8 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const IMG='https://image.tmdb.org/t/p/';
 const MQ={pos:0,v:0,dur:60,drag:false,hover:false,moved:0,lx:0,lt:0,idle:0};
 const POS=['Roteiro','Atuações','Final','Fotografia','Trilha sonora','Direção','Emocionante','Engraçado','Plot twist','Prende do início ao fim'];
-const optsOf=k=>{const base=k==='gostou'?POS:NEG,col=k==='gostou'?'gostou':'nao_gostou',o=new Set(base);for(const f of S.films.values()){const r=casal(f.id);for(const t of r?.[col]||[])o.add(t)}for(const t of S.draft?.[k]||[])o.add(t);return[...o]};
+const tipoOf=k=>k==='gostou'?'gostou':'nao_gostou';
+const optsOf=k=>{const col=tipoOf(k);let o;if(S.cards)o=new Set(S.cards.filter(c=>c.tipo===col).sort((a,b)=>a.ordem-b.ordem||ts(a.criado_em)-ts(b.criado_em)).map(c=>c.nome));else{o=new Set(k==='gostou'?POS:NEG);for(const f of S.films.values()){const r=casal(f.id);for(const t of r?.[col]||[])o.add(t)}}for(const t of S.draft?.[k]||[])o.add(t);return[...o]};
 const NEG=['Arrastado','Previsível','Final fraco','Confuso','Longo demais','Atuações fracas','Clichê','Sem graça','Roteiro furado','Não envelheceu bem'];
 const LBL=['','Horrível','Péssimo','Ruim','Fraco','Mais ou menos','Ok','Bom','Muito bom','Ótimo','Obra-prima'];
 const DUR=8000;
@@ -464,16 +466,17 @@ function render(){
 }
 
 /* ficha */
-function openDet(id){$('#det').innerHTML='';S.open=id;S.adding=null;S.editTags=false;S.confirmTag=null;S.confirmDel=false;const r=mine(id);S.draft={nota:val(r),gostou:new Set(r?.gostou||[]),naoGostou:new Set(r?.nao_gostou||[]),comentario:r?.comentario||''};renderDet();$('#ovDet').classList.add('on');$('#ovDet').scrollTop=0;document.body.style.overflow='hidden';pause(true)}
+function openDet(id){$('#det').innerHTML='';S.open=id;S.adding=null;S.editTags=false;S.confirmTag=null;S.renaming=null;S.confirmDel=false;const r=mine(id);S.draft={nota:val(r),gostou:new Set(r?.gostou||[]),naoGostou:new Set(r?.nao_gostou||[]),comentario:r?.comentario||''};renderDet();$('#ovDet').classList.add('on');$('#ovDet').scrollTop=0;document.body.style.overflow='hidden';pause(true)}
 function renderDet(){
   const ta=$('#com');if(ta&&S.draft)S.draft.comentario=ta.value;
   const f=S.films.get(S.open);if(!f){closeAll();return}
   const d=S.draft;const visto=f.status==='visto';
   const cur=casal(f.id);const soMinhas=ratesOf(f.id).every(r=>r.user_id===S.user.id);
   const a=avg(f.id);
-  const addUI=k=>S.adding===k?`<span class="addt"><input id="newTag" maxlength="40" placeholder="Novo card…" enterkeyhint="done"><button type="button" class="chip on ${k==='gostou'?'p':'n'}" id="newOk">OK</button></span>`:(S.editTags?'':`<button type="button" class="chip add" data-add="${k}">+ Adicionar</button>`)+`<button type="button" class="chip edit" data-edit>${S.editTags?'Concluir':'Editar cards'}</button>`;
-  const isBase=(k,t)=>(k==='gostou'?POS:NEG).includes(t);
-  const chip=(t,k,c)=>S.editTags&&!isBase(k,t)?`<button type="button" class="chip rm" data-rm="${k}" data-v="${esc(t)}">${S.confirmTag===k+'|'+t?`Remover “${esc(t)}”? Toque de novo`:'✕ '+esc(t)}</button>`:`<button type="button" class="chip ${c} ${d[k].has(t)?'on':''}" data-chip="${k}" data-v="${esc(t)}" aria-pressed="${d[k].has(t)}">${esc(t)}</button>`;
+  const inp=(v,ph,c)=>`<span class="addt"><input id="newTag" maxlength="40" placeholder="${ph}" value="${esc(v)}" enterkeyhint="done"><button type="button" class="chip on ${c}" id="newOk">OK</button></span>`;
+  const addUI=k=>(S.adding===k?inp('','Novo card…',k==='gostou'?'p':'n'):(S.editTags?'':`<button type="button" class="chip add" data-add="${k}">+ Adicionar</button>`))+`<button type="button" class="chip edit" data-edit>${S.editTags?'Concluir':'Editar cards'}</button>`;
+  const canEdit=(k,t)=>S.cards?true:!(k==='gostou'?POS:NEG).includes(t);
+  const chip=(t,k,c)=>S.editTags&&S.renaming?.k===k&&S.renaming.t===t?inp(t,'Novo nome',c):S.editTags&&canEdit(k,t)?`<span class="chip ed">${S.cards?`<button type="button" data-ren="${k}" data-v="${esc(t)}">✎ ${esc(t)}</button>`:`<span style="padding:8px 12px">${esc(t)}</span>`}<button type="button" class="x2" data-rm="${k}" data-v="${esc(t)}" aria-label="Remover ${esc(t)}">${S.confirmTag===k+'|'+t?'Remover? Toque de novo':'✕'}</button></span>`:`<button type="button" class="chip ${c} ${d[k].has(t)?'on':''}" data-chip="${k}" data-v="${esc(t)}" aria-pressed="${d[k].has(t)}">${esc(t)}</button>`;
   $('#det').innerHTML=`<button class="x" data-close aria-label="Fechar">×</button>
   <div class="dban"><div class="bd">${backdrop(f)}</div><div class="shade"></div></div>
   <div class="dbody"><div class="left"><div class="cover">${poster(f,'w500')}</div></div>
@@ -500,21 +503,33 @@ function closeAll(){document.querySelectorAll('.ov').forEach(o=>o.classList.remo
 function fail(e){console.error(e);toast(/fetch|network/i.test(e?.message||'')?'Sem internet agora. Tente de novo.':'Não deu para salvar. Tente de novo.')}
 async function run(q){const{error}=await q;if(error)throw error;await loadAll()}
 async function setStatus(id,st){try{await run(sb.from('filmes').update({status:st,visto_em:st==='visto'?new Date().toISOString():null}).eq('id',id));toast(st==='visto'?'Marcado como assistido — hora de avaliar!':'Voltou para a fila')}catch(e){fail(e)}}
-async function removeTag(k,t){
-  const col=k==='gostou'?'gostou':'nao_gostou';S.draft?.[k]?.delete(t);
-  try{
-    const ups=[];
-    for(const f of S.films.values()){
-      const r=casal(f.id);
-      if(r&&(r[col]||[]).includes(t))ups.push({filme_id:f.id,user_id:S.user.id,nota:r.nota,gostou:(r.gostou||[]).filter(x=>!(col==='gostou'&&x===t)),nao_gostou:(r.nao_gostou||[]).filter(x=>!(col==='nao_gostou'&&x===t)),comentario:r.comentario||'',em:new Date().toISOString()});
-    }
-    for(const r of S.rates.values())if(r.user_id===S.user.id&&(r[col]||[]).includes(t)&&!ups.some(u=>u.filme_id===r.filme_id))ups.push({...r,[col]:r[col].filter(x=>x!==t)});
-    for(const u of ups){const{error}=await sb.from('avaliacoes').upsert(u);if(error)throw error}
-    await loadAll();renderDet();toast(`Card “${t}” removido`);
-  }catch(e){fail(e)}
+async function replaceTag(k,t,neu){
+  const col=tipoOf(k);const fix=a=>[...new Set((a||[]).map(x=>x===t?neu:x).filter(Boolean))];
+  if(S.draft?.[k]?.has(t)){S.draft[k].delete(t);if(neu)S.draft[k].add(neu)}
+  const ups=[];
+  for(const f of S.films.values()){const r=casal(f.id);
+    if(r&&(r[col]||[]).includes(t))ups.push({filme_id:f.id,user_id:S.user.id,nota:r.nota,gostou:col==='gostou'?fix(r.gostou):r.gostou||[],nao_gostou:col==='nao_gostou'?fix(r.nao_gostou):r.nao_gostou||[],comentario:r.comentario||'',em:new Date().toISOString()})}
+  for(const r of S.rates.values())if(r.user_id===S.user.id&&(r[col]||[]).includes(t)&&!ups.some(u=>u.filme_id===r.filme_id))ups.push({...r,[col]:fix(r[col])});
+  for(const u of ups){const{error}=await sb.from('avaliacoes').upsert(u);if(error)throw error}
 }
-function addTag(){const i=$('#newTag');const t=(i?.value||'').trim().replace(/\s+/g,' ');const k=S.adding;S.adding=null;if(t&&k){const ex=optsOf(k).find(x=>x.toLowerCase()===t.toLowerCase())||t;S.draft[k].add(ex)}renderDet()}
-document.addEventListener('keydown',e=>{if(e.target.id==='newTag'){if(e.key==='Enter'){e.preventDefault();addTag()}if(e.key==='Escape'){S.adding=null;renderDet()}}});
+async function removeTag(k,t){
+  try{await replaceTag(k,t,null);if(S.cards){const{error}=await sb.from('cards').delete().match({tipo:tipoOf(k),nome:t});if(error)throw error}
+    await loadAll();renderDet();toast(`Card “${t}” removido`)}catch(e){fail(e)}
+}
+async function renameTag(k,t,neu){
+  const ex=optsOf(k).find(x=>x.toLowerCase()===neu.toLowerCase()&&x!==t);const alvo=ex||neu;
+  try{
+    if(ex){const{error}=await sb.from('cards').delete().match({tipo:tipoOf(k),nome:t});if(error)throw error}
+    else{const{error}=await sb.from('cards').update({nome:neu}).match({tipo:tipoOf(k),nome:t});if(error)throw error}
+    await replaceTag(k,t,alvo);await loadAll();renderDet();toast(`Card renomeado para “${alvo}”`)}catch(e){fail(e)}
+}
+async function addTag(){const i=$('#newTag');const t=(i?.value||'').trim().replace(/\s+/g,' ');
+  if(S.renaming){const{k,t:old}=S.renaming;S.renaming=null;if(t&&t!==old)return renameTag(k,old,t);return renderDet()}
+  const k=S.adding;S.adding=null;if(!t||!k)return renderDet();
+  const ex=optsOf(k).find(x=>x.toLowerCase()===t.toLowerCase());S.draft[k].add(ex||t);
+  if(!ex&&S.cards){const mx=Math.max(0,...S.cards.map(c=>c.ordem));const{error}=await sb.from('cards').insert({tipo:tipoOf(k),nome:t,ordem:mx+1});if(error&&!/duplicate/i.test(error.message))fail(error);else{try{await loadAll()}catch(_){}}}
+  renderDet()}
+document.addEventListener('keydown',e=>{if(e.target.id==='newTag'){if(e.key==='Enter'){e.preventDefault();addTag()}if(e.key==='Escape'){S.adding=null;S.renaming=null;renderDet()}}});
 async function saveRate(){
   const d=S.draft;d.comentario=$('#com').value;
   if(!d.nota){toast('Escolha uma nota de 1 a 10');return}
@@ -571,7 +586,9 @@ document.addEventListener('click',e=>{if(e.target.closest('#importOld'))importOl
 async function loadAll(){
   const[f,a,p]=await Promise.all([sb.from('filmes').select('*'),sb.from('avaliacoes').select('*'),sb.from('perfis').select('*')]);
   if(f.error||a.error||p.error)throw f.error||a.error||p.error;
+  const cr=await sb.from('cards').select('*');S.cards=cr.error?null:cr.data;
   S.films=new Map(f.data.map(x=>[x.id,x]));S.rates=new Map(a.data.map(r=>[r.filme_id+'__'+r.user_id,r]));S.perfis=Object.fromEntries(p.data.map(x=>[x.id,x.nome]));
+  if(S.cards&&!S.cards.length&&!S.seeding){S.seeding=true;const rows=[];let o=0;for(const[k,b]of[['gostou',POS],['naoGostou',NEG]]){const set=new Set(b);for(const f of S.films.values()){const r=casal(f.id);for(const t of r?.[tipoOf(k)]||[])set.add(t)}for(const n of set)rows.push({tipo:tipoOf(k),nome:n,ordem:o++})}const{error}=await sb.from('cards').upsert(rows,{onConflict:'tipo,nome',ignoreDuplicates:true});if(!error){const c2=await sb.from('cards').select('*');if(!c2.error)S.cards=c2.data}}
   const falta=OLD.some(o=>{const f=[...S.films.values()].find(x=>x.tmdb_id===o.id);return!f||!mine(f.id)});$('#status').innerHTML=falta&&!localStorage.getItem('oldDone_'+S.user.id)?'<button class="btn rose" id="importOld" type="button">Trazer os 5 filmes do app antigo</button>':'';render();
   if(S.open){const ae=document.activeElement;if(!(ae&&(ae.id==='com'||ae.id==='newTag')))renderDet()}
 }
@@ -583,7 +600,7 @@ async function enter(user){
   try{await sb.from('perfis').upsert({id:user.id,nome:user.user_metadata?.nome||user.email.split('@')[0]},{onConflict:'id',ignoreDuplicates:true})}catch(e){}
   try{await loadAll()}catch(e){console.error(e);$('#status').textContent='Não consegui carregar os filmes. Confira se o banco foi criado (supabase.sql).'}
   if(/[?&]importar/.test(location.search)){history.replaceState(null,'',location.pathname);importOld()}
-  if(!channel)channel=sb.channel('nossa-sessao').on('postgres_changes',{event:'*',schema:'public',table:'filmes'},reload).on('postgres_changes',{event:'*',schema:'public',table:'avaliacoes'},reload).on('postgres_changes',{event:'*',schema:'public',table:'perfis'},reload).subscribe();
+  if(!channel)channel=sb.channel('nossa-sessao').on('postgres_changes',{event:'*',schema:'public',table:'filmes'},reload).on('postgres_changes',{event:'*',schema:'public',table:'avaliacoes'},reload).on('postgres_changes',{event:'*',schema:'public',table:'cards'},reload).on('postgres_changes',{event:'*',schema:'public',table:'perfis'},reload).subscribe();
 }
 function showAuth(){S.user=null;$('#app').hidden=true;$('#auth').hidden=false;setMode(false)}
 function setMode(up){S.signup=up;$('#aNome').hidden=!up;$('#authT').textContent=up?'Criar a conta':'Bem-vindos de volta';$('#authP').textContent=up?'Cada um cria a sua conta, com o próprio e-mail.':'Entre para ver a lista de vocês dois.';$('#aBtn').textContent=up?'Criar conta':'Entrar';$('#aSwTxt').textContent=up?'Já tem conta?':'Primeira vez aqui?';$('#aSw').textContent=up?'Entrar':'Criar conta';$('#aSenha').autocomplete=up?'new-password':'current-password';$('#aErr').textContent=''}
@@ -644,7 +661,8 @@ document.addEventListener('click',e=>{if(e.target.closest('[data-close]')||e.tar
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
 $('#det').addEventListener('click',async e=>{
   const s=e.target.closest('[data-nota]');if(s){S.draft.nota=+s.dataset.nota;renderDet();return}
-  if(e.target.closest('[data-edit]')){S.editTags=!S.editTags;S.confirmTag=null;S.adding=null;renderDet();return}
+  if(e.target.closest('[data-edit]')){S.editTags=!S.editTags;S.confirmTag=null;S.adding=null;S.renaming=null;renderDet();return}
+  const rn=e.target.closest('[data-ren]');if(rn){S.renaming={k:rn.dataset.ren,t:rn.dataset.v};S.confirmTag=null;renderDet();setTimeout(()=>{const i=$('#newTag');if(i){i.focus();i.select()}},30);return}
   const rm=e.target.closest('[data-rm]');if(rm){const key=rm.dataset.rm+'|'+rm.dataset.v;if(S.confirmTag===key){S.confirmTag=null;removeTag(rm.dataset.rm,rm.dataset.v)}else{S.confirmTag=key;renderDet()}return}
   const ad=e.target.closest('[data-add]');if(ad){S.adding=ad.dataset.add;renderDet();setTimeout(()=>$('#newTag')?.focus(),30);return}
   if(e.target.closest('#newOk')){addTag();return}
