@@ -856,12 +856,11 @@ async function init(){
 init();
 }
 
-/* atualização automática: se houver versão nova publicada, recarrega sozinho */
-(()=>{const h=t=>{let x=0;for(let i=0;i<t.length;i++)x=(x*31+t.charCodeAt(i))|0;return x};let base=null;
-  const check=async()=>{try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text();const v=h(t);
-    if(base===null){base=v;return}
-    if(v!==base&&!S.open&&!document.querySelector('.ov.on')){location.reload()}}catch(_){}};
-  check();setInterval(check,5*60e3);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
+/* atualização automática: se a versão publicada for outra, recarrega sozinho */
+const BUILD='b1795322499';
+(()=>{const check=async()=>{try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text();
+    const m=t.match(/const BUILD='([^']+)'/);if(m&&m[1]!==BUILD&&!S.open&&!document.querySelector('.ov.on'))location.replace(location.pathname+'?u='+m[1])}catch(_){}};
+  setTimeout(check,1500);setInterval(check,5*60e3);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
 })();
 </script>
 </body>
