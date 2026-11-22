@@ -92,6 +92,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .rowT h3{font:400 34px/1.1 "Instrument Serif",serif;margin:0}
 .stats{display:flex;gap:22px;color:var(--mute);font-size:14px;flex-wrap:wrap}
 .stats b{color:var(--ink);font-size:18px;margin-right:4px}
+.addwho{margin:6px 0 4px;color:var(--blush);font-weight:600;font-size:14px}
 .subk{margin:4px 0 18px;display:flex;width:max-content;max-width:100%}.subk button{white-space:nowrap;padding:10px 14px}
 .mrow{margin-bottom:4px}.mlab{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:var(--blush);margin-top:6px}.mlab em{font-style:normal;color:var(--mute);font-weight:600;font-size:13px}.mrow .marq{padding:10px 0 16px}
 .marq{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);padding:16px 0 22px}
@@ -343,7 +344,7 @@ footer a{color:var(--blush)}
 <div class="ov" id="ovAdd" role="dialog" aria-modal="true" aria-labelledby="addT"><div class="sheet">
   <button class="x" data-close aria-label="Fechar">×</button>
   <div class="addh"><h2 id="addT">Qual filme ou série?</h2>
-  <p class="sub" style="font-weight:500">Comece a digitar — filmes e séries aparecem com a capa oficial.</p>
+  <p class="addwho" id="addWho"></p><p class="sub" style="font-weight:500">Comece a digitar — filmes e séries aparecem com a capa oficial.</p>
   <form class="addf" id="addForm"><input class="search" id="addQ" placeholder="Ex.: Jogos Vorazes, Ainda Estou Aqui…" autocomplete="off" enterkeyhint="search"></form></div>
   <div id="results"></div>
   <div class="row pad" style="margin-top:0"><button class="btn" data-close type="button" style="width:100%;justify-content:center">Fechar</button></div>
@@ -639,7 +640,13 @@ function searchTMDB(q){
     if(my!==qN)return;
     S.found=(j.results||[]).filter(r=>(r.media_type==='movie'||r.media_type==='tv')&&(r.poster_path||r.vote_count>20)).map(r=>({...r,tipo:r.media_type==='tv'?'serie':'filme',title:r.title||r.name,original_title:r.original_title||r.original_name,release_date:r.release_date||r.first_air_date})).sort((a,b)=>(b.tipo===S.kind)-(a.tipo===S.kind)).slice(0,14);
     if(!S.found.length){box.innerHTML='<p class="note pad" style="margin:0 0 20px">Nada encontrado. Tente o título original.</p>';return}
-    box.innerHTML=`<div class="res">${S.found.map((f,i)=>{const dn=tabUid()===S.user.id?S.user.id:null;const have=[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&(x.dono||null)===dn);return`<div style="animation-delay:${i*50}ms"><div class="cover">${f.poster_path?img(f.poster_path,'w342','',f.title):`<div class="nop">${esc(f.title)}</div>`}</div><div class="meta"><b>${esc(f.title)}</b><span>${esc([f.tipo==='serie'?'Série':'Filme',(f.release_date||'').slice(0,4),f.original_title!==f.title?f.original_title:''].filter(Boolean).join(' · '))}</span></div><div class="row" style="margin-top:10px">${have?'<span class="note" style="margin:0">Já está na lista</span>':`<button class="btn sm rose" data-pick="${i}" data-as="quero" type="button">Quero ver</button><button class="btn sm" data-pick="${i}" data-as="visto" type="button">${dn?'Já vi':'Já vimos'}</button>`}${pessoas().filter(([uid])=>uid!==S.user.id).map(([uid,nm])=>[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&x.dono===uid)?`<span class="note" style="margin:0">Já está na lista de ${esc(String(nm).split(' ')[0])}</span>`:`<button class="btn sm rec" data-pick="${i}" data-as="rec:${uid}" type="button">💌 Recomendar para ${esc(String(nm).split(' ')[0])}</button>`).join('')}</div></div>`}).join('')}</div>`;
+    const pu=tabUid(),ctx=!pu?'casal':pu===S.user.id?'eu':'outro',mode=pu?S.sub:S.tab;
+    const recBtn=(f,i,uid,nm)=>[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&x.dono===uid)?`<span class="note" style="margin:0">Já está na lista de ${esc(String(nm).split(' ')[0])}</span>`:`<button class="btn sm ${ctx==='outro'?'rose':'rec'}" data-pick="${i}" data-as="rec:${uid}" type="button">💌 Recomendar para ${esc(String(nm).split(' ')[0])}</button>`;
+    box.innerHTML=`<div class="res">${S.found.map((f,i)=>{const dn=ctx==='eu'?S.user.id:null;const have=[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&(x.dono||null)===dn);
+      const vistoPri=mode==='visto'||mode==='avaliar';
+      const own=ctx==='outro'?'':have?`<span class="note" style="margin:0">${ctx==='eu'?'Já está na sua lista':'Já está na lista de vocês'}</span>`:`<button class="btn sm ${vistoPri?'':'rose'}" data-pick="${i}" data-as="quero" type="button">${ctx==='eu'?'Quero ver (só eu)':'Queremos ver'}</button><button class="btn sm ${vistoPri?'rose':''}" data-pick="${i}" data-as="visto" type="button">${ctx==='eu'?'Já vi':'Vimos juntos'}</button>`;
+      const recs=ctx==='outro'?recBtn(f,i,pu,nome(pu)):ctx==='casal'?pessoas().filter(([uid])=>uid!==S.user.id).map(([uid,nm])=>recBtn(f,i,uid,nm)).join(''):'';
+      return`<div style="animation-delay:${i*50}ms"><div class="cover">${f.poster_path?img(f.poster_path,'w342','',f.title):`<div class="nop">${esc(f.title)}</div>`}</div><div class="meta"><b>${esc(f.title)}</b><span>${esc([f.tipo==='serie'?'Série':'Filme',(f.release_date||'').slice(0,4),f.original_title!==f.title?f.original_title:''].filter(Boolean).join(' · '))}</span></div><div class="row" style="margin-top:10px">${own}${recs}</div></div>`}).join('')}</div>`;
   }).catch(e=>{if(my!==qN)return;console.error(e);box.innerHTML=`<p class="note pad" style="margin:0 0 20px">${/401/.test(e.message)?'A chave do TMDB no config.js não está certa.':'Não consegui buscar agora. Verifique a internet.'}</p>`});
 }
 async function addFilm(r,st,btn){
@@ -743,7 +750,7 @@ function mqAttach(t,dur,dir){
 
 $('#grid').addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const c=e.target.closest('.card');if(!c)return;const cv=c.querySelector('.cover');const r=cv.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;cv.style.setProperty('--ry',((x-.5)*14)+'deg');cv.style.setProperty('--rx',((.5-y)*12)+'deg');cv.style.setProperty('--mx',x*100+'%');cv.style.setProperty('--my',y*100+'%')});
 $('#grid').addEventListener('pointerout',e=>{const c=e.target.closest('.card');if(c&&!c.contains(e.relatedTarget)){const cv=c.querySelector('.cover');cv.style.setProperty('--rx','0deg');cv.style.setProperty('--ry','0deg')}});
-const openAdd=()=>{$('#addT').textContent=tabUid()===S.user.id?'Adicionar à sua lista individual':'Qual filme ou série?';$('#ovAdd').classList.add('on');$('#results').innerHTML='';$('#addQ').value='';document.body.style.overflow='hidden';pause(true);setTimeout(()=>$('#addQ').focus(),60)};
+const openAdd=()=>{const pu=tabUid();$('#addT').textContent=!pu?'Adicionar para vocês dois':pu===S.user.id?'Adicionar só para você':`Recomendar para ${String(nome(pu)).split(' ')[0]}`;$('#addWho').innerHTML=!pu?'♥ Vai para a lista do casal — vocês dois veem e avaliam juntos.':pu===S.user.id?'Vai só para a sua lista individual — para ver por conta própria.':`💌 Vai para a lista individual de ${esc(String(nome(pu)).split(' ')[0])} como recomendação sua.`;$('#ovAdd').classList.add('on');$('#results').innerHTML='';$('#addQ').value='';document.body.style.overflow='hidden';pause(true);setTimeout(()=>$('#addQ').focus(),60)};
 $('#addBtn').addEventListener('click',openAdd);
 $('#addQ').addEventListener('input',e=>{clearTimeout(qT);const q=e.target.value.trim();qT=setTimeout(()=>searchTMDB(q),350)});
 $('#addForm').addEventListener('submit',e=>{e.preventDefault();clearTimeout(qT);searchTMDB($('#addQ').value.trim());$('#addQ').blur()});
