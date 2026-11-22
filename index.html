@@ -107,7 +107,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .tab[aria-selected=true]{background:var(--ink);color:#120a0d}
 .tab i{font-style:normal;font-size:12px;padding:1px 8px;border-radius:99px;background:#ffffff18}
 .tab[aria-selected=true] i{background:var(--rose);color:#fff}
-.tab svg{display:none}
+.tab svg{display:none}.pav{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--rose),#7a1630);color:#fff;font-size:11px;font-weight:800}
 .search{flex:1 1 220px;height:44px;border:1px solid var(--line);background:#ffffff0d;border-radius:999px;padding:0 18px;font-size:16px}
 select{height:44px;border:1px solid var(--line);background:#1a1316;border-radius:999px;padding:0 14px}
 .note{font-size:13px;color:var(--mute);margin:14px 0 0}
@@ -218,6 +218,7 @@ textarea{width:100%;min-height:100px;margin-top:8px;border:1px solid var(--line)
   .dbody{display:flex;flex-direction:column;gap:0;margin-top:-150px}.left{display:contents}.capa{order:3;margin-top:26px}.dbody .cover{width:170px}.dh{margin-top:6px}
   .tabs{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:20;justify-content:space-around;background:#1a1316e6;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 20px 50px -10px #000}
   .tab{flex:1;justify-content:center;padding:0 8px;font-size:13px;height:52px;flex-direction:column;gap:0;line-height:1.1}
+  .tab{padding:0 2px;font-size:12px}.pav{width:24px;height:24px;margin-bottom:1px}
   .tab svg{display:block}.tab i{position:absolute;margin:-30px 0 0 34px;font-size:11px}
   .tab{position:relative}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 14px;padding-bottom:120px}
@@ -348,7 +349,10 @@ const IMG='https://image.tmdb.org/t/p/';
 const MQ={pos:0,v:0,dur:60,drag:false,hover:false,moved:0,lx:0,lt:0,idle:0};
 const kindOf=f=>f.tipo==='serie'?'serie':'filme';
 const W=()=>S.kind==='serie'?{um:'série',uns:'séries',o:'a',U:'Séries'}:{um:'filme',uns:'filmes',o:'o',U:'Filmes'};
-const mine_kind=()=>[...S.films.values()].filter(f=>kindOf(f)===S.kind);
+const mine_kind=()=>[...S.films.values()].filter(f=>!f.dono&&kindOf(f)===S.kind);
+const pessoal=uid=>[...S.films.values()].filter(f=>f.dono===uid&&kindOf(f)===S.kind);
+const tabUid=()=>S.tab.startsWith('p:')?S.tab.slice(2):null;
+const pessoas=()=>Object.entries(S.perfis).sort((a,b)=>String(a[1]).localeCompare(String(b[1]),'pt'));
 const POS=['Roteiro','Atuações','Final','Fotografia','Trilha sonora','Direção','Emocionante','Engraçado','Plot twist','Prende do início ao fim'];
 const tipoOf=k=>k==='gostou'?'gostou':'nao_gostou';
 const optsOf=k=>{const col=tipoOf(k);let o;if(S.cards)o=new Set(S.cards.filter(c=>c.tipo===col).sort((a,b)=>a.ordem-b.ordem||ts(a.criado_em)-ts(b.criado_em)).map(c=>c.nome));else{o=new Set(k==='gostou'?POS:NEG);for(const f of S.films.values()){const r=casal(f.id);for(const t of r?.[col]||[])o.add(t)}}for(const t of S.draft?.[k]||[])o.add(t);return[...o]};
@@ -391,15 +395,16 @@ const trailerBtn=(f,sm)=>f.trailer?`<a class="btn${sm?' sm':''}" href="https://w
 
 const val=r=>r?+r.nota||0:0;
 const ratesOf=id=>[...S.rates.values()].filter(r=>r.filme_id===id&&val(r)>0);
-const casal=id=>ratesOf(id).sort((a,b)=>ts(b.em)-ts(a.em))[0];
+const casal=id=>{const f=S.films.get(id);return ratesOf(id).filter(r=>!f?.dono||r.user_id===f.dono).sort((a,b)=>ts(b.em)-ts(a.em))[0]};
+const _casalOld=id=>ratesOf(id).sort((a,b)=>ts(b.em)-ts(a.em))[0];
 const avg=id=>val(casal(id));
 const mine=id=>casal(id);
 const nome=u=>(S.perfis[u]||'').split(' ')[0]||'Alguém';
 const dur=m=>m?Math.floor(m/60)+'h'+String(m%60).padStart(2,'0'):'';
 
 function list(){
-  const all=mine_kind();
-  let l=S.tab==='quero'?all.filter(f=>f.status!=='visto'):S.tab==='visto'?all.filter(f=>f.status==='visto'):all.filter(f=>f.status==='visto'&&!val(mine(f.id)));
+  const pu=tabUid();const all=pu?pessoal(pu):mine_kind();
+  let l=pu?all:S.tab==='quero'?all.filter(f=>f.status!=='visto'):S.tab==='visto'?all.filter(f=>f.status==='visto'):all.filter(f=>f.status==='visto'&&!val(mine(f.id)));
   const q=S.q.trim().toLowerCase();
   if(q)l=l.filter(f=>[f.titulo,f.original,f.diretor,(f.generos||[]).join(' '),(f.elenco||[]).join(' ')].join(' ').toLowerCase().includes(q));
   const by={recentes:(a,b)=>(ts(b.visto_em)||ts(b.added_at))-(ts(a.visto_em)||ts(a.added_at)),nota:(a,b)=>avg(b.id)-avg(a.id),ano:(a,b)=>(b.ano||0)-(a.ano||0),az:(a,b)=>String(a.titulo).localeCompare(b.titulo,'pt')};
@@ -460,12 +465,15 @@ function renderKind(){for(const b of document.querySelectorAll('[data-kind]'))b.
 function render(){renderKind();
   const all=mine_kind();const vistos=all.filter(f=>f.status==='visto');
   $('#n-quero').textContent=all.length-vistos.length;$('#n-visto').textContent=vistos.length;$('#n-avaliar').textContent=vistos.filter(f=>!val(mine(f.id))).length;
+  {const tabs=$('#tabs');tabs.querySelectorAll('.tab.p').forEach(x=>x.remove());
+   for(const[uid,nm]of pessoas()){const n=pessoal(uid).filter(f=>f.status==='visto'&&!val(casal(f.id))).length;const b=document.createElement('button');b.className='tab p';b.type='button';b.setAttribute('role','tab');b.dataset.t='p:'+uid;b.innerHTML=`<span class="pav">${esc(ini(nm))}</span>${esc(String(nm).split(' ')[0])}<i>${pessoal(uid).length}</i>`;if(n)b.title=n+' para avaliar';tabs.appendChild(b)}
+   if(tabUid()&&!S.perfis[tabUid()])S.tab='quero'}
   document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.t===S.tab));
   $('#draw').style.display=S.tab==='quero'?'':'none';
   renderHero();renderRibbon();renderDuo();
   const l=list();
   if(!l.length){
-    const msg=S.q?['Nada encontrado','Tente outra busca.']:S.tab==='quero'?['A fila está vazia',`Adicione ${W().o} próxim${W().o} ${W().um} que vocês querem ver.`]:S.tab==='visto'?[`Nenhum${W().o==='a'?'a':''} ${W().um} assistid${W().o} ainda`,`Marque ${W().um==='série'?'uma':'um'} da fila como assistid${W().o}, ou adicione ${W().um==='série'?'uma':'um'} que já viram.`]:['Tudo avaliado',`Não falta nenhum${W().o==='a'?'a':''} ${W().um} para avaliar.`];
+    const msg=S.q?['Nada encontrado','Tente outra busca.']:tabUid()?(tabUid()===S.user.id?[`Seu espaço individual de ${W().uns}`,`Toque no + para adicionar ${W().um==='série'?'uma série':'um filme'} que você viu ou quer ver sem ${nome(pessoas().find(p=>p[0]!==S.user.id)?.[0])||'o seu amor'}.`]:[`${nome(tabUid())} ainda não adicionou nada aqui`,'Os títulos individuais dele aparecem nesta aba.']):S.tab==='quero'?['A fila está vazia',`Adicione ${W().o} próxim${W().o} ${W().um} que vocês querem ver.`]:S.tab==='visto'?[`Nenhum${W().o==='a'?'a':''} ${W().um} assistid${W().o} ainda`,`Marque ${W().um==='série'?'uma':'um'} da fila como assistid${W().o}, ou adicione ${W().um==='série'?'uma':'um'} que já viram.`]:['Tudo avaliado',`Não falta nenhum${W().o==='a'?'a':''} ${W().um} para avaliar.`];
     $('#grid').innerHTML=`<div class="empty"><b>${msg[0]}</b>${msg[1]}</div>`;return;
   }
   $('#grid').innerHTML=l.map((f,i)=>{const a=avg(f.id);
@@ -475,10 +483,12 @@ function render(){renderKind();
 
 /* ficha */
 function openDet(id){$('#det').innerHTML='';S.open=id;S.adding=null;S.editTags=false;S.confirmTag=null;S.renaming=null;S.confirmDel=false;const r=mine(id);S.draft={nota:val(r),gostou:new Set(r?.gostou||[]),naoGostou:new Set(r?.nao_gostou||[]),comentario:r?.comentario||''};renderDet();$('#ovDet').classList.add('on');$('#ovDet').scrollTop=0;document.body.style.overflow='hidden';pause(true)}
+function roTicket(f,r){return`<h4>Avaliação individual de ${esc(nome(f.dono))}</h4><div class="ticket"><div class="who"><span class="av" style="background:linear-gradient(135deg,#7c6cff,#2f2a7a)">${esc(ini(nome(f.dono)))}</span>${esc(nome(f.dono))}<em>${r?new Date(r.em).toLocaleDateString('pt-BR'):'ainda não avaliou'}</em></div>${r?`<div class="score ro"><div class="big"><b>${val(r)}</b><small>/10</small></div><span class="slab">${LBL[val(r)]||''}</span></div><div class="scale ro" aria-hidden="true">${Array.from({length:10},(_,k)=>`<i class="seg ${k<val(r)?'on':''}" style="--k:${k+1}"></i>`).join('')}</div><div>${(r.gostou||[]).map(t=>`<span class="tag p">+ ${esc(t)}</span>`).join('')}${(r.nao_gostou||[]).map(t=>`<span class="tag n">− ${esc(t)}</span>`).join('')}</div>${r.comentario?`<p class="quote">“${esc(r.comentario)}”</p>`:''}`:'<p class="note">Só a pessoa dona deste título pode avaliar.</p>'}</div>`}
 function renderDet(){
   const ta=$('#com');if(ta&&S.draft)S.draft.comentario=ta.value;
   const f=S.films.get(S.open);if(!f){closeAll();return}
   const d=S.draft;const visto=f.status==='visto';
+  const dono=f.dono||null,ro=dono&&dono!==S.user.id;
   const cur=casal(f.id);const soMinhas=ratesOf(f.id).every(r=>r.user_id===S.user.id);
   const a=avg(f.id);
   const inp=(v,ph,c)=>`<span class="addt"><input id="newTag" maxlength="40" placeholder="${ph}" value="${esc(v)}" enterkeyhint="done"><button type="button" class="chip on ${c}" id="newOk">OK</button></span>`;
@@ -493,15 +503,15 @@ function renderDet(){
   ${f.diretor?`<p style="margin:6px 0"><span style="color:var(--mute)">Direção</span>&nbsp; ${esc(f.diretor)}</p>`:''}${(f.elenco||[]).length?`<p style="margin:6px 0"><span style="color:var(--mute)">Elenco</span>&nbsp; ${esc(f.elenco.join(', '))}</p>`:''}
   ${f.sinopse?`<p style="margin:14px 0 0;max-width:62ch">${esc(f.sinopse)}</p>`:''}
   <div class="row">${visto?`<button class="btn sm" data-st="quero" type="button">Voltar para a fila</button>`:`<button class="btn sm rose" data-st="visto" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Marcar como assistido</button>`}${trailerBtn(f,true)}<button class="btn sm" id="del" type="button">${S.confirmDel?'Confirmar remoção':'Remover'}</button></div>
-  ${visto?`<h4>Avaliação do casal</h4>
-  <div class="ticket mine"><div class="who"><span class="av">♥</span>Nota de vocês dois<em>${cur?`salva por ${esc(nome(cur.user_id))} em ${new Date(cur.em).toLocaleDateString('pt-BR')} — qualquer um pode editar`:'ainda não avaliado'}</em></div>
+  ${visto&&ro?roTicket(f,cur):visto?`<h4>${dono?'Avaliação individual':'Avaliação do casal'}</h4>
+  <div class="ticket mine"><div class="who"><span class="av">${dono?esc(ini(nome(dono))):'♥'}</span>${dono?'Sua nota':'Nota de vocês dois'}<em>${cur?(dono?`salva em ${new Date(cur.em).toLocaleDateString('pt-BR')} — só você edita`:`salva por ${esc(nome(cur.user_id))} em ${new Date(cur.em).toLocaleDateString('pt-BR')} — qualquer um pode editar`):'ainda não avaliado'}</em></div>
   <div class="score"><div class="big"><b>${d.nota||'–'}</b><small>/10</small></div><span class="slab">${d.nota?LBL[d.nota]:'Toque na barra para dar a nota'}</span></div>
   <div class="scale" role="radiogroup" aria-label="Nota do casal de 1 a 10">${Array.from({length:10},(_,k)=>k+1).map(n=>`<button type="button" class="seg ${n<=d.nota?'on':''}" data-nota="${n}" role="radio" aria-checked="${n===d.nota}" aria-label="Nota ${n}" style="--k:${n}"><span>${n}</span></button>`).join('')}</div>
   <span class="lab">O que funcionou</span><div class="chips">${optsOf('gostou').map(t=>chip(t,'gostou','p')).join('')}${addUI('gostou')}</div>
   <span class="lab">O que não funcionou</span><div class="chips">${optsOf('naoGostou').map(t=>chip(t,'naoGostou','n')).join('')}${addUI('naoGostou')}</div>
   <label class="lab" for="com">Por que gostou — ou não gostou?</label><textarea id="com" placeholder="Conta aqui o que achou…">${esc(d.comentario)}</textarea>
   <div class="row"><button class="btn rose" id="save" type="button">Salvar avaliação</button>${cur&&soMinhas?'<button class="btn" id="unrate" type="button">Apagar nota</button>':''}</div></div>
-  `:'<p class="note" style="margin-top:24px">Depois de assistir, marque como assistido para os dois avaliarem.</p>'}
+  `:(dono?'<p class="note" style="margin-top:24px">Depois de assistir, marque como assistido para avaliar.</p>':'<p class="note" style="margin-top:24px">Depois de assistir, marque como assistido para os dois avaliarem.</p>')}
   <div class="row" style="margin-top:30px"><button class="btn" data-close type="button" style="width:100%;justify-content:center">Fechar</button></div>
   </div></div>`;
 }
@@ -554,15 +564,15 @@ function searchTMDB(q){
     if(my!==qN)return;
     S.found=(j.results||[]).filter(r=>(r.media_type==='movie'||r.media_type==='tv')&&(r.poster_path||r.vote_count>20)).map(r=>({...r,tipo:r.media_type==='tv'?'serie':'filme',title:r.title||r.name,original_title:r.original_title||r.original_name,release_date:r.release_date||r.first_air_date})).sort((a,b)=>(b.tipo===S.kind)-(a.tipo===S.kind)).slice(0,14);
     if(!S.found.length){box.innerHTML='<p class="note pad" style="margin:0 0 20px">Nada encontrado. Tente o título original.</p>';return}
-    box.innerHTML=`<div class="res">${S.found.map((f,i)=>{const have=[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo);return`<div style="animation-delay:${i*50}ms"><div class="cover">${f.poster_path?img(f.poster_path,'w342','',f.title):`<div class="nop">${esc(f.title)}</div>`}</div><div class="meta"><b>${esc(f.title)}</b><span>${esc([f.tipo==='serie'?'Série':'Filme',(f.release_date||'').slice(0,4),f.original_title!==f.title?f.original_title:''].filter(Boolean).join(' · '))}</span></div><div class="row" style="margin-top:10px">${have?'<span class="note" style="margin:0">Já está na lista</span>':`<button class="btn sm rose" data-pick="${i}" data-as="quero" type="button">Quero ver</button><button class="btn sm" data-pick="${i}" data-as="visto" type="button">Já vimos</button>`}</div></div>`}).join('')}</div>`;
+    box.innerHTML=`<div class="res">${S.found.map((f,i)=>{const dn=tabUid()===S.user.id?S.user.id:null;const have=[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&(x.dono||null)===dn);return`<div style="animation-delay:${i*50}ms"><div class="cover">${f.poster_path?img(f.poster_path,'w342','',f.title):`<div class="nop">${esc(f.title)}</div>`}</div><div class="meta"><b>${esc(f.title)}</b><span>${esc([f.tipo==='serie'?'Série':'Filme',(f.release_date||'').slice(0,4),f.original_title!==f.title?f.original_title:''].filter(Boolean).join(' · '))}</span></div><div class="row" style="margin-top:10px">${have?'<span class="note" style="margin:0">Já está na lista</span>':`<button class="btn sm rose" data-pick="${i}" data-as="quero" type="button">Quero ver</button><button class="btn sm" data-pick="${i}" data-as="visto" type="button">${dn?'Já vi':'Já vimos'}</button>`}</div></div>`}).join('')}</div>`;
   }).catch(e=>{if(my!==qN)return;console.error(e);box.innerHTML=`<p class="note pad" style="margin:0 0 20px">${/401/.test(e.message)?'A chave do TMDB no config.js não está certa.':'Não consegui buscar agora. Verifique a internet.'}</p>`});
 }
 async function addFilm(r,st,btn){
   if(S.busy)return;S.busy=true;btn.innerHTML='<span class="spin"></span>Adicionando';
   try{
-    const d=await details(r.id,r.tipo);const now=new Date().toISOString();S.kind=r.tipo;try{localStorage.setItem('kind',S.kind)}catch(_){}
-    const{data,error}=await sb.from('filmes').insert({...d,status:st,added_by:S.user.id,added_at:now,visto_em:st==='visto'?now:null}).select().single();
-    if(error)throw error;await loadAll();closeAll();S.tab=st==='visto'?'visto':'quero';S.hi=0;S.heroKey='';render();window.scrollTo({top:0});
+    const d=await details(r.id,r.tipo);const now=new Date().toISOString();const dono=tabUid()===S.user.id?S.user.id:null;S.kind=r.tipo;try{localStorage.setItem('kind',S.kind)}catch(_){}
+    const{data,error}=await sb.from('filmes').insert({...d,dono,status:st,added_by:S.user.id,added_at:now,visto_em:st==='visto'?now:null}).select().single();
+    if(error)throw error;await loadAll();closeAll();if(!dono)S.tab=st==='visto'?'visto':'quero';S.hi=0;S.heroKey='';render();window.scrollTo({top:0});
     toast(st==='visto'?'Adicionado aos assistidos — avalie!':'Adicionado à fila');if(st==='visto'&&data)setTimeout(()=>openDet(data.id),350);
   }catch(e){fail(e);btn.textContent=st==='visto'?'Já vimos':'Quero ver'}finally{S.busy=false}
 }
@@ -580,7 +590,7 @@ async function importOld(){
   try{
     await loadAll();
     for(const o of OLD){
-      let f=[...S.films.values()].find(x=>x.tmdb_id===o.id&&kindOf(x)==='filme');
+      let f=[...S.films.values()].find(x=>x.tmdb_id===o.id&&kindOf(x)==='filme'&&!x.dono);
       if(!f){const d=await details(o.id);const now=new Date().toISOString();
         const{data,error}=await sb.from('filmes').insert({...d,status:'visto',added_by:S.user.id,added_at:now,visto_em:now}).select().single();if(error)throw error;f=data;n++}
       if(!mine(f.id)){const{error}=await sb.from('avaliacoes').upsert({filme_id:f.id,user_id:S.user.id,nota:o.nota,gostou:o.g,nao_gostou:o.n,comentario:'',em:new Date().toISOString()});if(error)throw error}
@@ -597,7 +607,7 @@ async function loadAll(){
   const cr=await sb.from('cards').select('*');S.cards=cr.error?null:cr.data;
   S.films=new Map(f.data.map(x=>[x.id,x]));S.rates=new Map(a.data.map(r=>[r.filme_id+'__'+r.user_id,r]));S.perfis=Object.fromEntries(p.data.map(x=>[x.id,x.nome]));
   if(S.cards&&!S.cards.length&&!S.seeding){S.seeding=true;const rows=[];let o=0;for(const[k,b]of[['gostou',POS],['naoGostou',NEG]]){const set=new Set(b);for(const f of S.films.values()){const r=casal(f.id);for(const t of r?.[tipoOf(k)]||[])set.add(t)}for(const n of set)rows.push({tipo:tipoOf(k),nome:n,ordem:o++})}const{error}=await sb.from('cards').upsert(rows,{onConflict:'tipo,nome',ignoreDuplicates:true});if(!error){const c2=await sb.from('cards').select('*');if(!c2.error)S.cards=c2.data}}
-  const falta=OLD.some(o=>{const f=[...S.films.values()].find(x=>x.tmdb_id===o.id&&kindOf(x)==='filme');return!f||!mine(f.id)});$('#status').innerHTML=falta&&!localStorage.getItem('oldDone_'+S.user.id)?'<button class="btn rose" id="importOld" type="button">Trazer os 5 filmes do app antigo</button>':'';render();
+  const falta=OLD.some(o=>{const f=[...S.films.values()].find(x=>x.tmdb_id===o.id&&kindOf(x)==='filme'&&!x.dono);return!f||!mine(f.id)});$('#status').innerHTML=falta&&!localStorage.getItem('oldDone_'+S.user.id)?'<button class="btn rose" id="importOld" type="button">Trazer os 5 filmes do app antigo</button>':'';render();
   if(S.open){const ae=document.activeElement;if(!(ae&&(ae.id==='com'||ae.id==='newTag')))renderDet()}
 }
 let rT;const reload=()=>{clearTimeout(rT);rT=setTimeout(()=>loadAll().catch(console.error),300)};
@@ -654,7 +664,7 @@ $('#grid').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)o
 })();
 $('#grid').addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const c=e.target.closest('.card');if(!c)return;const cv=c.querySelector('.cover');const r=cv.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;cv.style.setProperty('--ry',((x-.5)*14)+'deg');cv.style.setProperty('--rx',((.5-y)*12)+'deg');cv.style.setProperty('--mx',x*100+'%');cv.style.setProperty('--my',y*100+'%')});
 $('#grid').addEventListener('pointerout',e=>{const c=e.target.closest('.card');if(c&&!c.contains(e.relatedTarget)){const cv=c.querySelector('.cover');cv.style.setProperty('--rx','0deg');cv.style.setProperty('--ry','0deg')}});
-const openAdd=()=>{$('#ovAdd').classList.add('on');$('#results').innerHTML='';$('#addQ').value='';document.body.style.overflow='hidden';pause(true);setTimeout(()=>$('#addQ').focus(),60)};
+const openAdd=()=>{$('#addT').textContent=tabUid()===S.user.id?'Adicionar à sua lista individual':'Qual filme ou série?';$('#ovAdd').classList.add('on');$('#results').innerHTML='';$('#addQ').value='';document.body.style.overflow='hidden';pause(true);setTimeout(()=>$('#addQ').focus(),60)};
 $('#addBtn').addEventListener('click',openAdd);
 $('#addQ').addEventListener('input',e=>{clearTimeout(qT);const q=e.target.value.trim();qT=setTimeout(()=>searchTMDB(q),350)});
 $('#addForm').addEventListener('submit',e=>{e.preventDefault();clearTimeout(qT);searchTMDB($('#addQ').value.trim());$('#addQ').blur()});

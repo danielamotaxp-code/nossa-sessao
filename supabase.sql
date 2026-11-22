@@ -80,3 +80,6 @@ alter table public.filmes add column if not exists tipo text not null default 'f
 alter table public.filmes add column if not exists temporadas int;
 alter table public.filmes drop constraint if exists filmes_tipo_check;
 alter table public.filmes add constraint filmes_tipo_check check (tipo in ('filme','serie'));
+
+-- Títulos individuais: dono preenchido = lista individual daquela pessoa
+alter table public.filmes add column if not exists dono uuid references auth.users(id) on delete cascade;
