@@ -94,6 +94,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .stats b{color:var(--ink);font-size:18px;margin-right:4px}
 .addwho{margin:6px 0 4px;color:var(--blush);font-weight:600;font-size:14px}
 .subk{margin:4px 0 18px;display:flex;width:max-content;max-width:100%}.subk button{white-space:nowrap;padding:10px 14px}
+.provs{position:absolute;left:8px;bottom:8px;display:flex;gap:4px;z-index:2}.provs img{width:26px;height:26px;border-radius:7px;box-shadow:0 2px 8px #000a;border:1px solid #ffffff30}
+.pgrp{margin-bottom:14px}.plist{display:flex;flex-wrap:wrap;gap:12px}.pv{display:flex;flex-direction:column;align-items:center;gap:5px;width:64px;text-align:center}.pv img{width:52px;height:52px;border-radius:13px;box-shadow:0 6px 16px -6px #000;border:1px solid #ffffff22}.pv small{font-size:11px;line-height:1.2;color:var(--mute)}
 .mrow{margin-bottom:4px}.mlab{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:var(--blush);margin-top:6px}.mlab em{font-style:normal;color:var(--mute);font-weight:600;font-size:13px}.mrow .marq{padding:10px 0 16px}
 .marq{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);padding:16px 0 22px}
 .track{display:flex;gap:16px;width:max-content;will-change:transform;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
@@ -494,14 +496,14 @@ function render(){renderKind();
   document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.t===S.tab));
   $('#draw').style.display=S.tab==='quero'?'':'none';
   renderHero();renderRibbon();renderDuo();
-  const l=list();
+  const l=list();setTimeout(()=>l.forEach(f=>{if(f.tmdb_id&&provCached(f)===undefined)provFetch(f)}),400);
   if(!l.length){
     const msg=S.q?['Nada encontrado','Tente outra busca.']:tabUid()?(tabUid()===S.user.id?[`Seu espaço individual de ${W().uns}`,`Toque no + para adicionar ${W().um==='série'?'uma série':'um filme'} que você viu ou quer ver sem ${nome(pessoas().find(p=>p[0]!==S.user.id)?.[0])||'o seu amor'}.`]:[`${nome(tabUid())} ainda não adicionou nada aqui`,'Os títulos individuais dele aparecem nesta aba.']):S.tab==='quero'?['A fila está vazia',`Adicione ${W().o} próxim${W().o} ${W().um} que vocês querem ver.`]:S.tab==='visto'?[`Nenhum${W().o==='a'?'a':''} ${W().um} assistid${W().o} ainda`,`Marque ${W().um==='série'?'uma':'um'} da fila como assistid${W().o}, ou adicione ${W().um==='série'?'uma':'um'} que já viram.`]:['Tudo avaliado',`Não falta nenhum${W().o==='a'?'a':''} ${W().um} para avaliar.`];
     $('#grid').innerHTML=`<div class="empty"><b>${msg[0]}</b>${msg[1]}</div>`;return;
   }
   $('#grid').innerHTML=l.map((f,i)=>{const a=avg(f.id);
     const flag=f.recomendado_por&&f.status!=='visto'?`<span class="badge r">💌 de ${esc(String(nome(f.recomendado_por)).split(' ')[0])}</span>`:f.status==='visto'&&!val(mine(f.id))?'<span class="badge r">Avaliar</span>':'';
-    return`<button class="card" data-id="${esc(f.id)}" style="animation-delay:${Math.min(i,14)*45}ms" type="button"><div class="cover">${poster(f)}${flag}${a?`<span class="badge">${fmt(a)}<small style="opacity:.6;font-weight:600">/10</small></span>`:''}</div><div class="meta"><b>${esc(f.titulo)}</b><span>${esc([f.ano,kindOf(f)==='serie'&&epsOf(f.id).size?epsOf(f.id).size+' ep. vistos':(f.generos||[])[0]].filter(Boolean).join(' · '))}</span></div></button>`}).join('');
+    return`<button class="card" data-id="${esc(f.id)}" style="animation-delay:${Math.min(i,14)*45}ms" type="button"><div class="cover">${poster(f)}${flag}${provBadges(f)}${a?`<span class="badge">${fmt(a)}<small style="opacity:.6;font-weight:600">/10</small></span>`:''}</div><div class="meta"><b>${esc(f.titulo)}</b><span>${esc([f.ano,kindOf(f)==='serie'&&epsOf(f.id).size?epsOf(f.id).size+' ep. vistos':(f.generos||[])[0]].filter(Boolean).join(' · '))}</span></div></button>`}).join('');
 }
 
 /* ficha */
@@ -526,6 +528,7 @@ function renderDet(){
   ${f.diretor?`<p style="margin:6px 0"><span style="color:var(--mute)">${kindOf(f)==='serie'?'Criação':'Direção'}</span>&nbsp; ${esc(f.diretor)}</p>`:''}${(f.elenco||[]).length?`<p style="margin:6px 0"><span style="color:var(--mute)">Elenco</span>&nbsp; ${esc(f.elenco.join(', '))}</p>`:''}
   ${f.recomendado_por?`<p style="margin:10px 0 0;color:var(--blush);font-weight:600">💌 Recomendação de ${esc(nome(f.recomendado_por))}${f.dono?` para ${esc(nome(f.dono))}`:''}</p>`:''}
   ${f.sinopse?`<p style="margin:14px 0 0;max-width:62ch">${esc(f.sinopse)}</p>`:''}
+  ${provSection(f)}
   <div class="row">${visto?`<button class="btn sm" data-st="quero" type="button">Voltar para a fila</button>`:`<button class="btn sm rose" data-st="visto" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Marcar como assistido</button>`}${trailerBtn(f,true)}<button class="btn sm" id="del" type="button">${S.confirmDel?'Confirmar remoção':'Remover'}</button></div>
   ${kindOf(f)==='serie'?epsSection(f):''}
   ${visto&&ro?roTicket(f,cur):visto?`<h4>${dono?'Avaliação individual':'Avaliação do casal'}</h4>
@@ -545,6 +548,32 @@ function closeAll(){document.querySelectorAll('.ov').forEach(o=>o.classList.remo
 /* gravações */
 function fail(e){console.error(e);toast(/fetch|network/i.test(e?.message||'')?'Sem internet agora. Tente de novo.':'Não deu para salvar. Tente de novo.')}
 async function run(q){const{error}=await q;if(error)throw error;await loadAll()}
+/* onde assistir (TMDB watch providers, dados JustWatch, Brasil) */
+const PROV_TTL=12*3600e3;S.prov={};S.provQ=new Set();
+const provKey=f=>(kindOf(f)==='serie'?'tv':'movie')+':'+f.tmdb_id;
+function provCached(f){const k=provKey(f);if(k in S.prov)return S.prov[k];
+  try{const c=JSON.parse(localStorage.getItem('prov:'+k)||'null');if(c&&Date.now()-c.t<PROV_TTL){S.prov[k]=c.d;return c.d}}catch(_){}
+  return undefined}
+let provBusy=0;const provWait=[];
+function provFetch(f){const k=provKey(f);if(provCached(f)!==undefined||S.provQ.has(k))return;S.provQ.add(k);provWait.push(f);provPump()}
+function provPump(){while(provBusy<4&&provWait.length){const f=provWait.shift();const k=provKey(f);provBusy++;
+  tmdb(`/${k.split(':')[0]}/${f.tmdb_id}/watch/providers`).then(j=>{const br=j.results?.BR||null;
+    const pick=a=>(a||[]).sort((x,y)=>(x.display_priority||99)-(y.display_priority||99)).map(p=>({n:p.provider_name,l:p.logo_path}));
+    const d=br?{link:br.link||null,flat:pick(br.flatrate),free:pick([...(br.free||[]),...(br.ads||[])]),rent:pick(br.rent),buy:pick(br.buy)}:{none:true};
+    S.prov[k]=d;try{localStorage.setItem('prov:'+k,JSON.stringify({t:Date.now(),d}))}catch(_){}
+    provPaint(f);if(S.open===f.id)renderDet();
+  }).catch(e=>{console.error(e);S.provQ.delete(k)}).finally(()=>{provBusy--;provPump()})}}
+const provLogo=(p,sz='w92')=>`<img src="${IMG}${sz}${esc(p.l)}" alt="${esc(p.n)}" title="${esc(p.n)}" loading="lazy">`;
+function provBadges(f){const d=provCached(f);if(!d||d.none)return'';const l=(d.flat.length?d.flat:d.free).slice(0,3);return l.length?`<span class="provs">${l.map(p=>provLogo(p)).join('')}</span>`:''}
+function provPaint(f){document.querySelectorAll(`.card[data-id="${CSS.escape(f.id)}"] .cover`).forEach(c=>{c.querySelector('.provs')?.remove();c.insertAdjacentHTML('beforeend',provBadges(f))})}
+function provSection(f){
+  if(!f.tmdb_id)return'';const d=provCached(f);if(d===undefined){provFetch(f);return'<h4>Onde assistir</h4><p class="note">Procurando onde assistir…</p>'}
+  const grp=(t,a)=>a.length?`<div class="pgrp"><span class="lab" style="margin:0 0 8px">${t}</span><div class="plist">${a.map(p=>`<span class="pv">${provLogo(p)}<small>${esc(p.n)}</small></span>`).join('')}</div></div>`:'';
+  const body=d.none?'':grp('Na assinatura',d.flat)+grp('Grátis',d.free)+grp('Alugar',d.rent)+grp('Comprar',d.buy);
+  return`<h4>Onde assistir <span style="color:var(--mute);font-size:.7em">no Brasil</span></h4>${body||`<p class="note">Ainda não está disponível em nenhum streaming no Brasil.</p>`}
+  <p class="note" style="font-size:12px;margin-top:6px">${d.link?`<a href="${esc(d.link)}" target="_blank" rel="noopener" style="color:var(--blush)">Ver todas as opções e links</a> · `:''}Dados de onde assistir: JustWatch, via TMDB.</p>`;
+}
+
 /* episódios das séries */
 const epKey=(t,e)=>t+':'+e;
 const epsOf=id=>S.eps.get(id)||new Set();
