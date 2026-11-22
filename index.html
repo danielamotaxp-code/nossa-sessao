@@ -96,6 +96,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .subk{margin:4px 0 18px;display:flex;width:max-content;max-width:100%}.subk button{white-space:nowrap;padding:10px 14px}
 .provs{position:absolute;left:8px;bottom:8px;display:flex;gap:4px;z-index:2}.provs img{width:26px;height:26px;border-radius:7px;box-shadow:0 2px 8px #000a;border:1px solid #ffffff30}
 .pbox{margin:14px 0 6px;padding:14px 16px 4px;border:1px solid var(--line);border-radius:18px;background:#ffffff06}.pbox .ph{margin:0 0 12px;font-size:24px}
+.pub{font-style:normal;color:#ffd27a}.pubn{margin:8px 0 4px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}.pubn b{color:#ffd27a;font-size:20px}.pubn small{color:var(--mute)}.pubn span{color:var(--mute);font-size:13px}
 .pgrp{margin-bottom:14px}.plist{display:flex;flex-wrap:wrap;gap:12px}.pv{display:flex;flex-direction:column;align-items:center;gap:5px;width:64px;text-align:center}.pv img{width:52px;height:52px;border-radius:13px;box-shadow:0 6px 16px -6px #000;border:1px solid #ffffff22}.pv small{font-size:11px;line-height:1.2;color:var(--mute)}
 .gbar{padding:0 clamp(18px,3.4vw,38px) 18px}.ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-weight:700;color:var(--blush)}.kind.mini2 button{padding:7px 12px;min-height:34px;font-size:13px}.gbar .chips{gap:8px}.gbar .chip{min-height:36px;padding:6px 12px;font-size:14px}
 .dhead{padding:0 clamp(18px,3.4vw,38px);margin:0 0 14px;font-weight:700;font-size:15px}
@@ -443,7 +444,7 @@ function slideHTML(f,i){
   const visto=f.status==='visto';const a=avg(f.id);
   const kick=visto?`Vocês assistiram${a?` · ${fmt(a)}/10`:''}`:'Próxima sessão';
   const btn2=visto?(!val(mine(f.id))?`<button class="btn" data-act="open" data-id="${esc(f.id)}" type="button">Avaliar agora</button>`:''):`<button class="btn" data-act="seen" data-id="${esc(f.id)}" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Já assistimos</button>`;
-  return`<article class="slide" data-i="${i}"><div class="bd">${backdrop(f)}</div><div class="shade"></div><div class="wrap sc"><div class="txt"><span class="kick">${kick}</span><h2>${esc(f.titulo)}</h2><p class="hm">${esc([f.ano,kindOf(f)==='serie'?(f.temporadas?f.temporadas+(f.temporadas>1?' temporadas':' temporada'):''):dur(f.duracao),(f.generos||[]).slice(0,2).join(', ')].filter(Boolean).join('  ·  '))}</p><p class="syn">${esc(f.sinopse||'')}</p><div class="row"><button class="btn pri" data-act="open" data-id="${esc(f.id)}" type="button">Ver ficha</button>${btn2}${trailerBtn(f)}</div></div><div class="pst"><div class="cover">${poster(f,'w500')}</div></div></div></article>`;
+  return`<article class="slide" data-i="${i}"><div class="bd">${backdrop(f)}</div><div class="shade"></div><div class="wrap sc"><div class="txt"><span class="kick">${kick}</span><h2>${esc(f.titulo)}</h2><p class="hm">${esc([f.ano,kindOf(f)==='serie'?(f.temporadas?f.temporadas+(f.temporadas>1?' temporadas':' temporada'):''):dur(f.duracao),(f.generos||[]).slice(0,2).join(', ')].filter(Boolean).join('  ·  '))}<span class="pub sep" data-f="${esc(f.id)}">${pubTxt(f)?'  ·  '+pubTxt(f):''}</span></p><p class="syn">${esc(f.sinopse||'')}</p><div class="row"><button class="btn pri" data-act="open" data-id="${esc(f.id)}" type="button">Ver ficha</button>${btn2}${trailerBtn(f)}</div></div><div class="pst"><div class="cover">${poster(f,'w500')}</div></div></div></article>`;
 }
 function renderHero(){
   const pick=heroPick();
@@ -499,14 +500,14 @@ function render(){renderKind();
   document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.t===S.tab));
   $('#draw').style.display=S.tab==='quero'?'':'none';
   renderHero();renderRibbon();renderDuo();
-  const l=list();setTimeout(()=>l.forEach(f=>{if(f.tmdb_id&&provCached(f)===undefined)provFetch(f)}),400);
+  const l=list();setTimeout(()=>{for(const f of [...l,...S.films.values()])if(f.tmdb_id&&provCached(f)===undefined)provFetch(f)},400);
   if(!l.length){
     const msg=S.q?['Nada encontrado','Tente outra busca.']:tabUid()?(tabUid()===S.user.id?[`Seu espaço individual de ${W().uns}`,`Toque no + para adicionar ${W().um==='série'?'uma série':'um filme'} que você viu ou quer ver sem ${nome(pessoas().find(p=>p[0]!==S.user.id)?.[0])||'o seu amor'}.`]:[`${nome(tabUid())} ainda não adicionou nada aqui`,'Os títulos individuais dele aparecem nesta aba.']):S.tab==='quero'?['A fila está vazia',`Adicione ${W().o} próxim${W().o} ${W().um} que vocês querem ver.`]:S.tab==='visto'?[`Nenhum${W().o==='a'?'a':''} ${W().um} assistid${W().o} ainda`,`Marque ${W().um==='série'?'uma':'um'} da fila como assistid${W().o}, ou adicione ${W().um==='série'?'uma':'um'} que já viram.`]:['Tudo avaliado',`Não falta nenhum${W().o==='a'?'a':''} ${W().um} para avaliar.`];
     $('#grid').innerHTML=`<div class="empty"><b>${msg[0]}</b>${msg[1]}</div>`;return;
   }
   $('#grid').innerHTML=l.map((f,i)=>{const a=avg(f.id);
     const flag=f.recomendado_por&&f.status!=='visto'?`<span class="badge r">💌 de ${esc(String(nome(f.recomendado_por)).split(' ')[0])}</span>`:f.status==='visto'&&!val(mine(f.id))?'<span class="badge r">Avaliar</span>':'';
-    return`<button class="card" data-id="${esc(f.id)}" style="animation-delay:${Math.min(i,14)*45}ms" type="button"><div class="cover">${poster(f)}${flag}${a?`<span class="badge">${fmt(a)}<small style="opacity:.6;font-weight:600">/10</small></span>`:''}</div><div class="meta"><b>${esc(f.titulo)}</b><span>${esc([f.ano,kindOf(f)==='serie'&&epsOf(f.id).size?epsOf(f.id).size+' ep. vistos':(f.generos||[])[0]].filter(Boolean).join(' · '))}</span></div></button>`}).join('');
+    return`<button class="card" data-id="${esc(f.id)}" style="animation-delay:${Math.min(i,14)*45}ms" type="button"><div class="cover">${poster(f)}${flag}${a?`<span class="badge">${fmt(a)}<small style="opacity:.6;font-weight:600">/10</small></span>`:''}</div><div class="meta"><b>${esc(f.titulo)}</b><span>${esc([f.ano,kindOf(f)==='serie'&&epsOf(f.id).size?epsOf(f.id).size+' ep. vistos':(f.generos||[])[0]].filter(Boolean).join(' · '))}<em class="pub sep">${pubTxt(f)?' · '+pubTxt(f):''}</em></span></div></button>`}).join('');
 }
 
 /* ficha */
@@ -527,6 +528,7 @@ function renderDet(){
   <div class="dban"><div class="bd">${backdrop(f)}</div><div class="shade"></div></div>
   <div class="dbody"><div class="left"><div class="cover">${poster(f,'w500')}</div></div>
   <div><h2 class="dh">${esc(f.titulo)}</h2><p class="sub">${esc([f.original&&f.original!==f.titulo?f.original:'',f.ano,kindOf(f)==='serie'?(f.temporadas?f.temporadas+(f.temporadas>1?' temporadas':' temporada'):''):(f.duracao?f.duracao+' min':'')].filter(Boolean).join('  ·  '))}</p>
+  ${pub(f)?`<p class="pubn"><b>★ ${fmt(pub(f))}</b><small>/10</small> <span>nota do público · ${provCached(f).votos.toLocaleString('pt-BR')} votos no TMDB</span></p>`:''}
   <div class="pills">${(f.generos||[]).map(g=>`<span class="pill">${esc(g)}</span>`).join('')}</div>
   <div class="pbox">${provSection(f)}</div>
   ${f.diretor?`<p style="margin:6px 0"><span style="color:var(--mute)">${kindOf(f)==='serie'?'Criação':'Direção'}</span>&nbsp; ${esc(f.diretor)}</p>`:''}${(f.elenco||[]).length?`<p style="margin:6px 0"><span style="color:var(--mute)">Elenco</span>&nbsp; ${esc(f.elenco.join(', '))}</p>`:''}
@@ -555,20 +557,23 @@ async function run(q){const{error}=await q;if(error)throw error;await loadAll()}
 const PROV_TTL=12*3600e3;S.prov={};S.provQ=new Set();
 const provKey=f=>(kindOf(f)==='serie'?'tv':'movie')+':'+f.tmdb_id;
 function provCached(f){const k=provKey(f);if(k in S.prov)return S.prov[k];
-  try{const c=JSON.parse(localStorage.getItem('prov:'+k)||'null');if(c&&Date.now()-c.t<PROV_TTL){S.prov[k]=c.d;return c.d}}catch(_){}
+  try{const c=JSON.parse(localStorage.getItem('prov2:'+k)||'null');if(c&&Date.now()-c.t<PROV_TTL){S.prov[k]=c.d;return c.d}}catch(_){}
   return undefined}
 let provBusy=0;const provWait=[];
 function provFetch(f){const k=provKey(f);if(provCached(f)!==undefined||S.provQ.has(k))return;S.provQ.add(k);provWait.push(f);provPump()}
 function provPump(){while(provBusy<4&&provWait.length){const f=provWait.shift();const k=provKey(f);provBusy++;
-  tmdb(`/${k.split(':')[0]}/${f.tmdb_id}/watch/providers`).then(j=>{const br=j.results?.BR||null;
+  tmdb(`/${k.split(':')[0]}/${f.tmdb_id}`,{append_to_response:'watch/providers'}).then(j=>{const br=j['watch/providers']?.results?.BR||null;
     const pick=a=>(a||[]).sort((x,y)=>(x.display_priority||99)-(y.display_priority||99)).map(p=>({n:p.provider_name,l:p.logo_path}));
-    const d=br?{link:br.link||null,flat:pick(br.flatrate),free:pick([...(br.free||[]),...(br.ads||[])]),rent:pick(br.rent),buy:pick(br.buy)}:{none:true};
-    S.prov[k]=d;try{localStorage.setItem('prov:'+k,JSON.stringify({t:Date.now(),d}))}catch(_){}
+    const d=br?{link:br.link||null,flat:pick(br.flatrate),free:pick([...(br.free||[]),...(br.ads||[])]),rent:pick(br.rent),buy:pick(br.buy)}:{none:true};d.nota=a10(j.vote_average,10);d.votos=j.vote_count||0;
+    S.prov[k]=d;try{localStorage.setItem('prov2:'+k,JSON.stringify({t:Date.now(),d}))}catch(_){}
     provPaint(f);if(S.open===f.id)renderDet();
   }).catch(e=>{console.error(e);S.provQ.delete(k)}).finally(()=>{provBusy--;provPump()})}}
 const provLogo=(p,sz='w92')=>`<img src="${IMG}${sz}${esc(p.l)}" alt="${esc(p.n)}" title="${esc(p.n)}" loading="lazy">`;
 function provBadges(f){const d=provCached(f);if(!d||d.none)return'';const l=(d.flat.length?d.flat:d.free).slice(0,3);return l.length?`<span class="provs">${l.map(p=>provLogo(p)).join('')}</span>`:''}
-function provPaint(f){return;document.querySelectorAll(`.card[data-id="${CSS.escape(f.id)}"] .cover`).forEach(c=>{c.querySelector('.provs')?.remove();c.insertAdjacentHTML('beforeend',provBadges(f))})}
+const a10=(v,escala=10)=>v==null?null:Math.round((escala===5?v*2:v)*10)/10;
+const pub=f=>{const d=provCached(f);return d&&d.votos>0&&d.nota?d.nota:null};
+const pubTxt=f=>{const n=pub(f);return n?'★ '+fmt(n):''};
+function provPaint(f){document.querySelectorAll(`.card[data-id="${CSS.escape(f.id)}"] .pub, .slide .pub[data-f="${CSS.escape(f.id)}"]`).forEach(e=>{const t=pubTxt(f);e.textContent=t?(e.classList.contains('sep')?' · ':'')+t:''});return;document.querySelectorAll(`.card[data-id="${CSS.escape(f.id)}"] .cover`).forEach(c=>{c.querySelector('.provs')?.remove();c.insertAdjacentHTML('beforeend',provBadges(f))})}
 function provSection(f){const H=t=>`<h4 class="ph">${t}</h4>`;
   if(!f.tmdb_id)return'';const d=provCached(f);if(d===undefined){provFetch(f);return H('Onde assistir')+'<p class="note">Procurando onde assistir…</p>'}
   const grp=(t,a)=>a.length?`<div class="pgrp"><span class="lab" style="margin:0 0 8px">${t}</span><div class="plist">${a.map(p=>`<span class="pv">${provLogo(p)}<small>${esc(p.n)}</small></span>`).join('')}</div></div>`:'';
@@ -857,7 +862,7 @@ init();
 }
 
 /* atualização automática: se a versão publicada for outra, recarrega sozinho */
-const BUILD='b1795322499';
+const BUILD='b1795324932';
 (()=>{const check=async()=>{try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text();
     const m=t.match(/const BUILD='([^']+)'/);if(m&&m[1]!==BUILD&&!S.open&&!document.querySelector('.ov.on'))location.replace(location.pathname+'?u='+m[1])}catch(_){}};
   setTimeout(check,1500);setInterval(check,5*60e3);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
