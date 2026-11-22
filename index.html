@@ -92,8 +92,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .stats{display:flex;gap:22px;color:var(--mute);font-size:14px;flex-wrap:wrap}
 .stats b{color:var(--ink);font-size:18px;margin-right:4px}
 .marq{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);padding:16px 0 22px}
-.track{display:flex;gap:16px;width:max-content;animation:marq var(--t,60s) linear infinite}
-.marq:hover .track{animation-play-state:paused}
+.track{display:flex;gap:16px;width:max-content;will-change:transform;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+.track.drag{cursor:grabbing}.track img{-webkit-user-drag:none;pointer-events:none}
 @keyframes marq{to{transform:translateX(-50%)}}
 .mini{all:unset;cursor:pointer;width:128px;flex:none;transition:transform .3s}
 .mini:hover{transform:translateY(-8px) scale(1.04)}
@@ -222,7 +222,7 @@ textarea{width:100%;min-height:100px;margin-top:8px;border:1px solid var(--line)
   .toast{bottom:96px}
   .logo{font-size:26px}.topbar .btn span{display:none}.topbar .btn{padding:0 14px}
 }
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}.track{animation:none}.marq{overflow-x:auto}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
 
 /* app independente */
 .field[hidden]{display:none}
@@ -342,6 +342,7 @@ const C=window.APP_CONFIG||{};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const IMG='https://image.tmdb.org/t/p/';
+const MQ={pos:0,v:0,dur:60,drag:false,hover:false,moved:0,lx:0,lt:0,idle:0};
 const POS=['Roteiro','Atuações','Final','Fotografia','Trilha sonora','Direção','Emocionante','Engraçado','Plot twist','Prende do início ao fim'];
 const optsOf=k=>{const base=k==='gostou'?POS:NEG,col=k==='gostou'?'gostou':'nao_gostou',o=new Set(base);for(const f of S.films.values()){const r=casal(f.id);for(const t of r?.[col]||[])o.add(t)}for(const t of S.draft?.[k]||[])o.add(t);return[...o]};
 const NEG=['Arrastado','Previsível','Final fraco','Confuso','Longo demais','Atuações fracas','Clichê','Sem graça','Roteiro furado','Não envelheceu bem'];
@@ -438,7 +439,7 @@ function renderRibbon(){
   const key=all.map(f=>f.id+f.poster).join('|');if(key===S.ribbonKey)return;S.ribbonKey=key;
   let base=all;while(base.length&&base.length<8)base=base.concat(all);
   const one=base.map(f=>`<button class="mini" data-id="${esc(f.id)}" type="button" aria-label="${esc(f.titulo)}"><div class="cover">${poster(f,'w185')}</div></button>`).join('');
-  $('#track').innerHTML=one+one;$('#track').style.setProperty('--t',Math.max(30,base.length*4.5)+'s');
+  $('#track').innerHTML=one+one;MQ.dur=Math.max(30,base.length*4.5);
 }
 function renderDuo(){
   const ids=Object.keys(S.perfis).sort((a,b)=>a===S.user?.id?-1:b===S.user?.id?1:0).slice(0,2);
@@ -607,7 +608,25 @@ $('#tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t){S
 $('#q').addEventListener('input',e=>{S.q=e.target.value;render()});
 $('#sort').addEventListener('change',e=>{S.sort=e.target.value;render()});
 $('#grid').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openDet(c.dataset.id)});
-$('#track').addEventListener('click',e=>{const c=e.target.closest('.mini');if(c)openDet(c.dataset.id)});
+/* carrossel de capas: anda sozinho e pode ser arrastado */
+(()=>{const t=$('#track'),still=matchMedia('(prefers-reduced-motion: reduce)').matches;let last=performance.now();
+  const half=()=>t.scrollWidth/2||1;
+  const wrap=()=>{const h=half();MQ.pos=((MQ.pos%h)-h)%h};
+  function tick(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+    if(!MQ.drag){const auto=still||MQ.hover||now<MQ.idle?0:-half()/MQ.dur;
+      if(Math.abs(MQ.v)>5){MQ.pos+=MQ.v*dt;MQ.v*=Math.pow(.04,dt)}else{MQ.v=0;MQ.pos+=auto*dt}}
+    wrap();t.style.transform=`translate3d(${MQ.pos}px,0,0)`;requestAnimationFrame(tick)}
+  requestAnimationFrame(tick);
+  t.addEventListener('pointerdown',e=>{if(e.button>0)return;MQ.drag=true;MQ.moved=0;MQ.v=0;MQ.lx=e.clientX;MQ.lt=performance.now();MQ.sx=e.clientX;MQ.sy=e.clientY;MQ.pid=e.pointerId});
+  t.addEventListener('pointermove',e=>{if(!MQ.drag||e.pointerId!==MQ.pid)return;const dx=e.clientX-MQ.lx,now=performance.now();
+    if(!MQ.moved&&Math.abs(e.clientY-MQ.sy)>Math.abs(e.clientX-MQ.sx)+4&&Math.abs(e.clientX-MQ.sx)<8){MQ.drag=false;return}
+    MQ.moved+=Math.abs(dx);if(MQ.moved>6&&!t.classList.contains('drag')){t.classList.add('drag');try{t.setPointerCapture(e.pointerId)}catch(_){}}
+    MQ.pos+=dx;const ddt=Math.max(1,now-MQ.lt)/1000;MQ.v=.7*MQ.v+.3*(dx/ddt);MQ.lx=e.clientX;MQ.lt=now});
+  const end=e=>{if(!MQ.drag)return;MQ.drag=false;t.classList.remove('drag');if(performance.now()-MQ.lt>90)MQ.v=0;MQ.v=Math.max(-3000,Math.min(3000,MQ.v));MQ.idle=performance.now()+1500};
+  t.addEventListener('pointerup',end);t.addEventListener('pointercancel',end);t.addEventListener('lostpointercapture',end);
+  const m=t.parentElement;m.addEventListener('mouseenter',()=>MQ.hover=true);m.addEventListener('mouseleave',()=>MQ.hover=false);
+  t.addEventListener('click',e=>{if(MQ.moved>6){e.preventDefault();e.stopPropagation();MQ.moved=0;return}const c=e.target.closest('.mini');if(c)openDet(c.dataset.id)},true);
+})();
 $('#grid').addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const c=e.target.closest('.card');if(!c)return;const cv=c.querySelector('.cover');const r=cv.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;cv.style.setProperty('--ry',((x-.5)*14)+'deg');cv.style.setProperty('--rx',((.5-y)*12)+'deg');cv.style.setProperty('--mx',x*100+'%');cv.style.setProperty('--my',y*100+'%')});
 $('#grid').addEventListener('pointerout',e=>{const c=e.target.closest('.card');if(c&&!c.contains(e.relatedTarget)){const cv=c.querySelector('.cover');cv.style.setProperty('--rx','0deg');cv.style.setProperty('--ry','0deg')}});
 const openAdd=()=>{$('#ovAdd').classList.add('on');$('#results').innerHTML='';$('#addQ').value='';document.body.style.overflow='hidden';pause(true);setTimeout(()=>$('#addQ').focus(),60)};
