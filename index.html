@@ -92,6 +92,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .rowT h3{font:400 34px/1.1 "Instrument Serif",serif;margin:0}
 .stats{display:flex;gap:22px;color:var(--mute);font-size:14px;flex-wrap:wrap}
 .stats b{color:var(--ink);font-size:18px;margin-right:4px}
+.subk{margin:4px 0 18px;display:flex;width:max-content;max-width:100%}.subk button{white-space:nowrap;padding:10px 14px}
 .mrow{margin-bottom:4px}.mlab{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:var(--blush);margin-top:6px}.mlab em{font-style:normal;color:var(--mute);font-weight:600;font-size:13px}.mrow .marq{padding:10px 0 16px}
 .marq{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);padding:16px 0 22px}
 .track{display:flex;gap:16px;width:max-content;will-change:transform;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
@@ -333,6 +334,7 @@ footer a{color:var(--blush)}
 
 <main class="wrap">
   <p class="note" id="status">Carregando…</p>
+  <div class="kind subk" id="subk" role="tablist" hidden><button type="button" data-sub="quero">Quero ver<i id="s-quero"></i></button><button type="button" data-sub="visto">Assistidos<i id="s-visto"></i></button><button type="button" data-sub="avaliar">Avaliar<i id="s-avaliar"></i></button></div>
   <section class="grid" id="grid" aria-live="polite"></section>
   <footer>Dados e imagens de filmes: <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>. Este app usa a API do TMDB, mas não é endossado nem certificado pelo TMDB.</footer>
 </main>
@@ -368,7 +370,7 @@ const optsOf=k=>{const col=tipoOf(k);let o;if(S.cards)o=new Set(S.cards.filter(c
 const NEG=['Arrastado','Previsível','Final fraco','Confuso','Longo demais','Atuações fracas','Clichê','Sem graça','Roteiro furado','Não envelheceu bem'];
 const LBL=['','Horrível','Péssimo','Ruim','Fraco','Mais ou menos','Ok','Bom','Muito bom','Ótimo','Obra-prima'];
 const DUR=8000;
-const S={eps:new Map(),tv:{},openSeason:null,kind:(()=>{try{return localStorage.getItem('kind')==='serie'?'serie':'filme'}catch(_){return'filme'}})(),user:null,perfis:{},films:new Map(),rates:new Map(),tab:'quero',q:'',sort:'recentes',open:null,draft:null,found:[],hero:[],heroKey:'',hi:0,paused:false,ribbonKey:'',confirmDel:false,signup:false,busy:false};
+const S={sub:'quero',eps:new Map(),tv:{},openSeason:null,kind:(()=>{try{return localStorage.getItem('kind')==='serie'?'serie':'filme'}catch(_){return'filme'}})(),user:null,perfis:{},films:new Map(),rates:new Map(),tab:'quero',q:'',sort:'recentes',open:null,draft:null,found:[],hero:[],heroKey:'',hi:0,paused:false,ribbonKey:'',confirmDel:false,signup:false,busy:false};
 let sb=null,tt,ht;
 const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',3200)};
 const fmt=n=>n.toLocaleString('pt-BR',{maximumFractionDigits:1,minimumFractionDigits:n%1?1:0});
@@ -413,7 +415,8 @@ const dur=m=>m?Math.floor(m/60)+'h'+String(m%60).padStart(2,'0'):'';
 
 function list(){
   const pu=tabUid();const all=pu?pessoal(pu):mine_kind();
-  let l=pu?all:S.tab==='quero'?all.filter(f=>f.status!=='visto'):S.tab==='visto'?all.filter(f=>f.status==='visto'):all.filter(f=>f.status==='visto'&&!val(mine(f.id)));
+  const mode=pu?S.sub:S.tab;
+  let l=mode==='quero'?all.filter(f=>f.status!=='visto'):mode==='visto'?all.filter(f=>f.status==='visto'):all.filter(f=>f.status==='visto'&&!val(mine(f.id)));
   const q=S.q.trim().toLowerCase();
   if(q)l=l.filter(f=>[f.titulo,f.original,f.diretor,(f.generos||[]).join(' '),(f.elenco||[]).join(' ')].join(' ').toLowerCase().includes(q));
   const by={recentes:(a,b)=>(ts(b.visto_em)||ts(b.added_at))-(ts(a.visto_em)||ts(a.added_at)),nota:(a,b)=>avg(b.id)-avg(a.id),ano:(a,b)=>(b.ano||0)-(a.ano||0),az:(a,b)=>String(a.titulo).localeCompare(b.titulo,'pt')};
@@ -460,11 +463,14 @@ function renderRibbon(){
   const mins=vistos.reduce((s,f)=>s+(+f.duracao||0),0);
   $('#stats').innerHTML=`<span><b>${vistos.length}</b>assistidos</span><span><b>${rated.length?fmt(rated.reduce((a,b)=>a+b,0)/rated.length):'–'}</b>nota média</span><span><b>${Math.round(mins/60)}h</b>${S.kind==='serie'?'de episódios':'de cinema juntos'}</span>`;
   const byV=a=>a.filter(f=>f.status==='visto').sort((x,y)=>(ts(y.visto_em)||ts(y.added_at))-(ts(x.visto_em)||ts(x.added_at)));
-  const qv=all.filter(f=>f.status!=='visto').sort((x,y)=>ts(y.added_at)-ts(x.added_at));
-  const rows=[{lab:S.kind==='serie'?'Assistimos juntos':'Vimos juntos',av:'♥',l:byV(all)},{lab:'Queremos ver',av:'★',l:qv}].concat(pessoas().map(([uid,nm])=>({lab:`${uid===S.user.id?'Só eu':'Só '+String(nm).split(' ')[0]}`,av:ini(nm),l:byV(pessoal(uid))}))).filter(r=>r.l.length);
+  const pu=tabUid();const mode=pu?S.sub:S.tab;const pn=pu?String(nome(pu)).split(' ')[0]:'';
+  const fonte=pu?pessoal(pu):all;
+  const lst=mode==='quero'?fonte.filter(f=>f.status!=='visto').sort((x,y)=>ts(y.added_at)-ts(x.added_at)):mode==='visto'?byV(fonte):byV(fonte).filter(f=>!val(mine(f.id)));
+  const nomeModo={quero:pu?(pu===S.user.id?'Quero ver':pn+' quer ver'):'Queremos ver',visto:pu?(pu===S.user.id?'Assisti':pn+' assistiu'):(S.kind==='serie'?'Assistimos juntos':'Vimos juntos'),avaliar:pu?'Para avaliar · '+pn:'Para avaliar juntos'}[mode];
+  const rows=[{lab:nomeModo,av:pu?ini(nome(pu)):mode==='quero'?'★':mode==='visto'?'♥':'☆',l:lst}].filter(r=>r.l.length);
   const key=S.kind+'#'+rows.map(r=>r.lab+':'+r.l.map(f=>f.id+f.poster).join(',')).join('|');if(key===S.ribbonKey)return;S.ribbonKey=key;
   const box=$('#marqs');
-  box.innerHTML=rows.length?rows.map(r=>`<div class="mrow"><div class="wrap mlab"><span class="pav">${esc(r.av)}</span>${esc(r.lab)}<em>${r.l.length}</em></div><div class="marq"><div class="track" data-mq></div></div></div>`).join(''):`<p class="wrap note" style="margin:0 auto 10px">Quando vocês marcarem ${S.kind==='serie'?'séries':'filmes'} como assistid${S.kind==='serie'?'as':'os'}, as capas aparecem aqui.</p>`;
+  box.innerHTML=rows.length?rows.map(r=>`<div class="mrow"><div class="wrap mlab"><span class="pav">${esc(r.av)}</span>${esc(r.lab)}<em>${r.l.length}</em></div><div class="marq"><div class="track" data-mq></div></div></div>`).join(''):`<p class="wrap note" style="margin:0 auto 10px">Nada nesta aba ainda — as capas aparecem aqui.</p>`;
   box.querySelectorAll('.track').forEach((t,k)=>{const r=rows[k];let base=r.l;while(base.length&&base.length<8)base=base.concat(r.l);
     const one=base.map(f=>`<button class="mini" data-id="${esc(f.id)}" type="button" aria-label="${esc(f.titulo)}"><div class="cover">${poster(f,'w185')}</div></button>`).join('');
     t.innerHTML=one+one;mqAttach(t,Math.max(30,base.length*4.5),k%2?1:-1)});
@@ -477,6 +483,7 @@ function renderDuo(){
 }
 function renderKind(){for(const b of document.querySelectorAll('[data-kind]'))b.setAttribute('aria-selected',b.dataset.kind===S.kind);const c={filme:0,serie:0};for(const f of S.films.values())c[kindOf(f)]++;$('#k-filme').textContent=c.filme;$('#k-serie').textContent=c.serie;$('#addBtn span').textContent=S.kind==='serie'?'Adicionar série':'Adicionar filme';$('#q').placeholder=`Buscar ${S.kind==='serie'?'séries':'filmes'} na lista…`}
 function render(){renderKind();
+  {const pu=tabUid();$('#subk').hidden=!pu;if(pu){const l=pessoal(pu),v=l.filter(f=>f.status==='visto');$('#s-quero').textContent=l.length-v.length;$('#s-visto').textContent=v.length;$('#s-avaliar').textContent=v.filter(f=>!val(mine(f.id))).length;for(const b of document.querySelectorAll('[data-sub]'))b.setAttribute('aria-selected',b.dataset.sub===S.sub)}}
   const all=mine_kind();const vistos=all.filter(f=>f.status==='visto');
   $('#n-quero').textContent=all.length-vistos.length;$('#n-visto').textContent=vistos.length;$('#n-avaliar').textContent=vistos.filter(f=>!val(mine(f.id))).length;
   {const tabs=$('#tabs');tabs.querySelectorAll('.tab.p').forEach(x=>x.remove());
@@ -640,7 +647,7 @@ async function addFilm(r,st,btn){
   try{
     const d=await details(r.id,r.tipo);const now=new Date().toISOString();const rec=st.startsWith('rec:')?st.slice(4):null;const dono=rec||(tabUid()===S.user.id?S.user.id:null);if(rec)st='quero';S.kind=r.tipo;try{localStorage.setItem('kind',S.kind)}catch(_){}
     const{data,error}=await sb.from('filmes').insert({...d,dono,recomendado_por:rec?S.user.id:null,status:st,added_by:S.user.id,added_at:now,visto_em:st==='visto'?now:null}).select().single();
-    if(error)throw error;await loadAll();closeAll();if(rec){toast(`Recomendado para ${String(nome(rec)).split(' ')[0]} 💌`);return}if(!dono)S.tab=st==='visto'?'visto':'quero';S.hi=0;S.heroKey='';render();window.scrollTo({top:0});
+    if(error)throw error;await loadAll();closeAll();if(dono&&!rec)S.sub=st==='visto'?'visto':'quero';if(rec){toast(`Recomendado para ${String(nome(rec)).split(' ')[0]} 💌`);return}if(!dono)S.tab=st==='visto'?'visto':'quero';S.hi=0;S.heroKey='';render();window.scrollTo({top:0});
     toast(st==='visto'?'Adicionado aos assistidos — avalie!':'Adicionado à fila');if(st==='visto'&&data)setTimeout(()=>openDet(data.id),350);
   }catch(e){fail(e);btn.textContent=st.startsWith('rec:')?'Recomendar':st==='visto'?'Já vimos':'Quero ver'}finally{S.busy=false}
 }
@@ -740,6 +747,7 @@ const openAdd=()=>{$('#addT').textContent=tabUid()===S.user.id?'Adicionar à sua
 $('#addBtn').addEventListener('click',openAdd);
 $('#addQ').addEventListener('input',e=>{clearTimeout(qT);const q=e.target.value.trim();qT=setTimeout(()=>searchTMDB(q),350)});
 $('#addForm').addEventListener('submit',e=>{e.preventDefault();clearTimeout(qT);searchTMDB($('#addQ').value.trim());$('#addQ').blur()});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-sub]');if(!b)return;S.sub=b.dataset.sub;render()});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-kind]');if(!b)return;S.kind=b.dataset.kind;try{localStorage.setItem('kind',S.kind)}catch(_){};S.hi=0;S.heroKey='';S.ribbonKey='';render()});
 $('#results').addEventListener('click',e=>{const p=e.target.closest('[data-pick]');if(p)addFilm(S.found[+p.dataset.pick],p.dataset.as,p)});
 $('#draw').addEventListener('click',()=>{const l=list();if(!l.length){toast('A fila está vazia');return}openDet(l[Math.floor(Math.random()*l.length)].id);toast('Sorteado! Pipoca pronta?')});
