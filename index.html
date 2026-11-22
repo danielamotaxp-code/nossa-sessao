@@ -855,6 +855,14 @@ async function init(){
 }
 init();
 }
+
+/* atualização automática: se houver versão nova publicada, recarrega sozinho */
+(()=>{const h=t=>{let x=0;for(let i=0;i<t.length;i++)x=(x*31+t.charCodeAt(i))|0;return x};let base=null;
+  const check=async()=>{try{const t=await(await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'})).text();const v=h(t);
+    if(base===null){base=v;return}
+    if(v!==base&&!S.open&&!document.querySelector('.ov.on')){location.reload()}}catch(_){}};
+  check();setInterval(check,5*60e3);document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
+})();
 </script>
 </body>
 </html>
