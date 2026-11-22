@@ -286,7 +286,7 @@ footer a{color:var(--blush)}
   <button id="duo" type="button" aria-label="Conta"></button>
   <button class="btn rose" id="addBtn" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Adicionar filme</span></button>
 </div></header>
-<div class="menu" id="menu"><p id="menuWho"></p><button id="logout" type="button">Sair da conta</button></div>
+<div class="menu" id="menu"><p id="menuWho"></p><button id="importOld" type="button">Trazer filmes do app antigo</button><button id="logout" type="button">Sair da conta</button></div>
 
 <section class="hero" id="hero" aria-roledescription="carrossel" aria-label="Destaques">
   <div id="slides"></div>
@@ -523,12 +523,35 @@ async function addFilm(r,st,btn){
   }catch(e){fail(e);btn.textContent=st==='visto'?'Já vimos':'Quero ver'}finally{S.busy=false}
 }
 
+
+/* importação única dos filmes do app antigo (notas da Daniela) */
+const OLD=[
+ {id:70160,nota:7,g:['Roteiro','Atuações','Final','Emocionante'],n:['Previsível']},
+ {id:758323,nota:7,g:['Roteiro','Atuações','Emocionante'],n:['Final fraco','Previsível']},
+ {id:242512,nota:5,g:['Atuações','Plot twist'],n:['Previsível','Final fraco','Clichê']},
+ {id:335796,nota:6,g:['Atuações','Emocionante','Plot twist'],n:['Previsível','Final fraco']},
+ {id:1083381,nota:6,g:['Roteiro','Atuações','Fotografia'],n:['Final fraco','Roteiro furado']}];
+async function importOld(){
+  if(S.busy)return;S.busy=true;$('#menu').classList.remove('on');toast('Trazendo os filmes antigos…');let n=0;
+  try{
+    await loadAll();
+    for(const o of OLD){
+      let f=[...S.films.values()].find(x=>x.tmdb_id===o.id);
+      if(!f){const d=await details(o.id);const now=new Date().toISOString();
+        const{data,error}=await sb.from('filmes').insert({...d,status:'visto',added_by:S.user.id,added_at:now,visto_em:now}).select().single();if(error)throw error;f=data;n++}
+      if(!mine(f.id)){const{error}=await sb.from('avaliacoes').upsert({filme_id:f.id,user_id:S.user.id,nota:o.nota,gostou:o.g,nao_gostou:o.n,comentario:'',em:new Date().toISOString()});if(error)throw error}
+    }
+    S.tab='visto';S.hi=0;S.heroKey='';await loadAll();window.scrollTo({top:0});toast(n?`${n} filmes trazidos com as suas notas ✓`:'Os filmes antigos já estavam aqui ✓');
+  }catch(e){fail(e)}finally{S.busy=false}
+}
+document.addEventListener('click',e=>{if(e.target.closest('#importOld'))importOld()});
+
 /* dados */
 async function loadAll(){
   const[f,a,p]=await Promise.all([sb.from('filmes').select('*'),sb.from('avaliacoes').select('*'),sb.from('perfis').select('*')]);
   if(f.error||a.error||p.error)throw f.error||a.error||p.error;
   S.films=new Map(f.data.map(x=>[x.id,x]));S.rates=new Map(a.data.map(r=>[r.filme_id+'__'+r.user_id,r]));S.perfis=Object.fromEntries(p.data.map(x=>[x.id,x.nome]));
-  $('#status').textContent='';render();
+  $('#status').innerHTML=S.films.size?'':'<button class="btn rose" id="importOld" type="button">Trazer os 5 filmes do app antigo</button>';render();
   if(S.open){const ae=document.activeElement;if(!(ae&&ae.id==='com'))renderDet()}
 }
 let rT;const reload=()=>{clearTimeout(rT);rT=setTimeout(()=>loadAll().catch(console.error),300)};
