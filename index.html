@@ -96,6 +96,8 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .subk{margin:4px 0 18px;display:flex;width:max-content;max-width:100%}.subk button{white-space:nowrap;padding:10px 14px}
 .provs{position:absolute;left:8px;bottom:8px;display:flex;gap:4px;z-index:2}.provs img{width:26px;height:26px;border-radius:7px;box-shadow:0 2px 8px #000a;border:1px solid #ffffff30}
 .pgrp{margin-bottom:14px}.plist{display:flex;flex-wrap:wrap;gap:12px}.pv{display:flex;flex-direction:column;align-items:center;gap:5px;width:64px;text-align:center}.pv img{width:52px;height:52px;border-radius:13px;box-shadow:0 6px 16px -6px #000;border:1px solid #ffffff22}.pv small{font-size:11px;line-height:1.2;color:var(--mute)}
+.gbar{padding:0 clamp(18px,3.4vw,38px) 18px}.ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-weight:700;color:var(--blush)}.kind.mini2 button{padding:7px 12px;min-height:34px;font-size:13px}.gbar .chips{gap:8px}.gbar .chip{min-height:36px;padding:6px 12px;font-size:14px}
+.dhead{padding:0 clamp(18px,3.4vw,38px);margin:0 0 14px;font-weight:700;font-size:15px}
 .mrow{margin-bottom:4px}.mlab{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:var(--blush);margin-top:6px}.mlab em{font-style:normal;color:var(--mute);font-weight:600;font-size:13px}.mrow .marq{padding:10px 0 16px}
 .marq{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);padding:16px 0 22px}
 .track{display:flex;gap:16px;width:max-content;will-change:transform;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
@@ -347,9 +349,9 @@ footer a{color:var(--blush)}
 <div class="ov" id="ovAdd" role="dialog" aria-modal="true" aria-labelledby="addT"><div class="sheet">
   <button class="x" data-close aria-label="Fechar">×</button>
   <div class="addh"><h2 id="addT">Qual filme ou série?</h2>
-  <p class="addwho" id="addWho"></p><p class="sub" style="font-weight:500">Comece a digitar — filmes e séries aparecem com a capa oficial.</p>
-  <form class="addf" id="addForm"><input class="search" id="addQ" placeholder="Ex.: Jogos Vorazes, Ainda Estou Aqui…" autocomplete="off" enterkeyhint="search"></form></div>
-  <div id="results"></div>
+  <p class="addwho" id="addWho"></p><p class="sub" style="font-weight:500">Digite um título ou um gênero (ex.: terror), ou escolha um gênero abaixo.</p>
+  <form class="addf" id="addForm"><input class="search" id="addQ" placeholder="Título ou gênero: Jogos Vorazes, terror…" autocomplete="off" enterkeyhint="search"></form></div>
+  <div id="gen"></div><div id="results"></div>
   <div class="row pad" style="margin-top:0"><button class="btn" data-close type="button" style="width:100%;justify-content:center">Fechar</button></div>
 </div></div>
 
@@ -661,22 +663,49 @@ async function saveRate(){
 }
 
 /* busca de filmes (TMDB) */
+function renderFound(){
+    const pu=tabUid(),ctx=!pu?'casal':pu===S.user.id?'eu':'outro',mode=pu?S.sub:S.tab;
+    const recBtn=(f,i,uid,nm)=>[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&x.dono===uid)?`<span class="note" style="margin:0">Já está na lista de ${esc(String(nm).split(' ')[0])}</span>`:`<button class="btn sm ${ctx==='outro'?'rose':'rec'}" data-pick="${i}" data-as="rec:${uid}" type="button">💌 Recomendar para ${esc(String(nm).split(' ')[0])}</button>`;
+    const box=$('#results');box.innerHTML=(S.disc?`<p class="dhead">${esc(S.disc.nome)} · ${S.disc.tipo==='serie'?'séries':'filmes'} mais bem avaliad${S.disc.tipo==='serie'?'as':'os'} primeiro</p>`:'')+`<div class="res">${S.found.map((f,i)=>{const dn=ctx==='eu'?S.user.id:null;const have=[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&(x.dono||null)===dn);
+      const vistoPri=mode==='visto'||mode==='avaliar';
+      const own=ctx==='outro'?'':have?`<span class="note" style="margin:0">${ctx==='eu'?'Já está na sua lista':'Já está na lista de vocês'}</span>`:`<button class="btn sm ${vistoPri?'':'rose'}" data-pick="${i}" data-as="quero" type="button">${ctx==='eu'?'Quero ver (só eu)':'Queremos ver'}</button><button class="btn sm ${vistoPri?'rose':''}" data-pick="${i}" data-as="visto" type="button">${ctx==='eu'?'Já vi':'Vimos juntos'}</button>`;
+      const recs=ctx==='outro'?recBtn(f,i,pu,nome(pu)):ctx==='casal'?pessoas().filter(([uid])=>uid!==S.user.id).map(([uid,nm])=>recBtn(f,i,uid,nm)).join(''):'';
+      return`<div style="animation-delay:${i*50}ms"><div class="cover">${f.poster_path?img(f.poster_path,'w342','',f.title):`<div class="nop">${esc(f.title)}</div>`}</div><div class="meta"><b>${esc(f.title)}</b><span>${esc([f.tipo==='serie'?'Série':'Filme',f.vote_average&&f.vote_count>20?'★ '+f.vote_average.toFixed(1):'',(f.release_date||'').slice(0,4),f.original_title!==f.title?f.original_title:''].filter(Boolean).join(' · '))}</span></div><div class="row" style="margin-top:10px">${own}${recs}</div></div>`}).join('')}</div>`+(S.disc&&S.disc.page<S.disc.total?`<div style="text-align:center;padding:0 0 30px"><button class="btn" id="dmore" type="button">Ver mais (notas menores)</button></div>`:'');
+}
+/* explorar por gênero: mais bem avaliados primeiro */
+S.genres={};S.dkind=null;
+const norm=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+async function loadGenres(){for(const[t,p]of[['filme','movie'],['serie','tv']])if(!S.genres[t]){try{S.genres[t]=(await tmdb(`/genre/${p}/list`,{language:'pt-BR'})).genres||[]}catch(e){S.genres[t]=null}}}
+function findGenre(q){const k=S.dkind||S.kind;const n=norm(q);for(const t of[k,k==='filme'?'serie':'filme']){const g=(S.genres[t]||[]).find(x=>norm(x.name)===n||norm(x.name).split(/\s*[&e]\s+|\s*&\s*/).includes(n));if(g)return{...g,tipo:t}}return null}
+async function genreBar(){const el=$('#gen');if(!el)return;await loadGenres();if($('#addQ').value.trim().length>=2&&!S.disc)return;
+  const k=S.dkind||S.kind;const gs=S.genres[k]||[];
+  el.innerHTML=`<div class="gbar"><div class="ghead"><span>Explorar por gênero</span><div class="kind mini2"><button type="button" data-dk="filme" aria-selected="${k==='filme'}">Filmes</button><button type="button" data-dk="serie" aria-selected="${k==='serie'}">Séries</button></div></div><div class="chips">${gs.map(g=>`<button type="button" class="chip ${S.disc?.id===g.id&&S.disc?.tipo===k?'on p':''}" data-gen="${g.id}" data-gn="${esc(g.name)}">${esc(g.name)}</button>`).join('')}</div></div>`}
+async function discover(id,nome_,tipo,page){
+  const box=$('#results');const my=++qN;if(page===1){box.innerHTML='<div class="reel"><div></div><div></div><div></div><div></div></div>';S.dkind=tipo}
+  try{const j=await tmdb(`/discover/${tipo==='serie'?'tv':'movie'}`,{with_genres:id,sort_by:'vote_average.desc','vote_count.gte':tipo==='serie'?150:300,language:'pt-BR',include_adult:'false',page});
+    if(my!==qN)return;
+    const novos=(j.results||[]).filter(r=>r.poster_path).map(r=>({...r,tipo,title:r.title||r.name,original_title:r.original_title||r.original_name,release_date:r.release_date||r.first_air_date}));
+    S.found=page===1?novos:S.found.concat(novos);S.disc={id,nome:nome_,tipo,page,total:Math.min(j.total_pages||1,20)};
+    genreBar();renderFound();
+  }catch(e){console.error(e);box.innerHTML='<p class="note pad">Não consegui buscar agora. Verifique a internet.</p>'}
+}
+document.addEventListener('click',e=>{
+  const dk=e.target.closest('[data-dk]');if(dk){S.dkind=dk.dataset.dk;S.disc=null;$('#addQ').value='';$('#results').innerHTML='';genreBar();return}
+  const g=e.target.closest('[data-gen]');if(g){$('#addQ').value='';discover(+g.dataset.gen,g.dataset.gn,S.dkind||S.kind,1);return}
+  if(e.target.closest('#dmore')){const d=S.disc;e.target.closest('#dmore').outerHTML='<div class="reel" style="margin:0 auto 30px"><div></div><div></div><div></div></div>';discover(d.id,d.nome,d.tipo,d.page+1)}
+});
 let qT,qN=0;
 function searchTMDB(q){
   const box=$('#results');const my=++qN;
-  if(q.length<2){box.innerHTML='';return}
+  if(q.length<2){box.innerHTML='';S.disc=null;genreBar();return}
+  const g=findGenre(q);if(g){discover(g.id,g.name,g.tipo,1);return}
+  $('#gen').innerHTML='';
   box.innerHTML='<div class="reel"><div></div><div></div><div></div><div></div></div>';
   tmdb('/search/multi',{query:q,language:'pt-BR',include_adult:'false'}).then(j=>{
     if(my!==qN)return;
     S.found=(j.results||[]).filter(r=>(r.media_type==='movie'||r.media_type==='tv')&&(r.poster_path||r.vote_count>20)).map(r=>({...r,tipo:r.media_type==='tv'?'serie':'filme',title:r.title||r.name,original_title:r.original_title||r.original_name,release_date:r.release_date||r.first_air_date})).sort((a,b)=>(b.tipo===S.kind)-(a.tipo===S.kind)).slice(0,14);
     if(!S.found.length){box.innerHTML='<p class="note pad" style="margin:0 0 20px">Nada encontrado. Tente o título original.</p>';return}
-    const pu=tabUid(),ctx=!pu?'casal':pu===S.user.id?'eu':'outro',mode=pu?S.sub:S.tab;
-    const recBtn=(f,i,uid,nm)=>[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&x.dono===uid)?`<span class="note" style="margin:0">Já está na lista de ${esc(String(nm).split(' ')[0])}</span>`:`<button class="btn sm ${ctx==='outro'?'rose':'rec'}" data-pick="${i}" data-as="rec:${uid}" type="button">💌 Recomendar para ${esc(String(nm).split(' ')[0])}</button>`;
-    box.innerHTML=`<div class="res">${S.found.map((f,i)=>{const dn=ctx==='eu'?S.user.id:null;const have=[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&(x.dono||null)===dn);
-      const vistoPri=mode==='visto'||mode==='avaliar';
-      const own=ctx==='outro'?'':have?`<span class="note" style="margin:0">${ctx==='eu'?'Já está na sua lista':'Já está na lista de vocês'}</span>`:`<button class="btn sm ${vistoPri?'':'rose'}" data-pick="${i}" data-as="quero" type="button">${ctx==='eu'?'Quero ver (só eu)':'Queremos ver'}</button><button class="btn sm ${vistoPri?'rose':''}" data-pick="${i}" data-as="visto" type="button">${ctx==='eu'?'Já vi':'Vimos juntos'}</button>`;
-      const recs=ctx==='outro'?recBtn(f,i,pu,nome(pu)):ctx==='casal'?pessoas().filter(([uid])=>uid!==S.user.id).map(([uid,nm])=>recBtn(f,i,uid,nm)).join(''):'';
-      return`<div style="animation-delay:${i*50}ms"><div class="cover">${f.poster_path?img(f.poster_path,'w342','',f.title):`<div class="nop">${esc(f.title)}</div>`}</div><div class="meta"><b>${esc(f.title)}</b><span>${esc([f.tipo==='serie'?'Série':'Filme',(f.release_date||'').slice(0,4),f.original_title!==f.title?f.original_title:''].filter(Boolean).join(' · '))}</span></div><div class="row" style="margin-top:10px">${own}${recs}</div></div>`}).join('')}</div>`;
+    S.disc=null;renderFound();
   }).catch(e=>{if(my!==qN)return;console.error(e);box.innerHTML=`<p class="note pad" style="margin:0 0 20px">${/401/.test(e.message)?'A chave do TMDB no config.js não está certa.':'Não consegui buscar agora. Verifique a internet.'}</p>`});
 }
 async function addFilm(r,st,btn){
@@ -780,7 +809,7 @@ function mqAttach(t,dur,dir){
 
 $('#grid').addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const c=e.target.closest('.card');if(!c)return;const cv=c.querySelector('.cover');const r=cv.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;cv.style.setProperty('--ry',((x-.5)*14)+'deg');cv.style.setProperty('--rx',((.5-y)*12)+'deg');cv.style.setProperty('--mx',x*100+'%');cv.style.setProperty('--my',y*100+'%')});
 $('#grid').addEventListener('pointerout',e=>{const c=e.target.closest('.card');if(c&&!c.contains(e.relatedTarget)){const cv=c.querySelector('.cover');cv.style.setProperty('--rx','0deg');cv.style.setProperty('--ry','0deg')}});
-const openAdd=()=>{const pu=tabUid();$('#addT').textContent=!pu?'Adicionar para vocês dois':pu===S.user.id?'Adicionar só para você':`Recomendar para ${String(nome(pu)).split(' ')[0]}`;$('#addWho').innerHTML=!pu?'♥ Vai para a lista do casal — vocês dois veem e avaliam juntos.':pu===S.user.id?'Vai só para a sua lista individual — para ver por conta própria.':`💌 Vai para a lista individual de ${esc(String(nome(pu)).split(' ')[0])} como recomendação sua.`;$('#ovAdd').classList.add('on');$('#results').innerHTML='';$('#addQ').value='';document.body.style.overflow='hidden';pause(true);setTimeout(()=>$('#addQ').focus(),60)};
+const openAdd=()=>{S.disc=null;S.dkind=null;setTimeout(genreBar,0);const pu=tabUid();$('#addT').textContent=!pu?'Adicionar para vocês dois':pu===S.user.id?'Adicionar só para você':`Recomendar para ${String(nome(pu)).split(' ')[0]}`;$('#addWho').innerHTML=!pu?'♥ Vai para a lista do casal — vocês dois veem e avaliam juntos.':pu===S.user.id?'Vai só para a sua lista individual — para ver por conta própria.':`💌 Vai para a lista individual de ${esc(String(nome(pu)).split(' ')[0])} como recomendação sua.`;$('#ovAdd').classList.add('on');$('#results').innerHTML='';$('#addQ').value='';document.body.style.overflow='hidden';pause(true);setTimeout(()=>$('#addQ').focus(),60)};
 $('#addBtn').addEventListener('click',openAdd);
 $('#addQ').addEventListener('input',e=>{clearTimeout(qT);const q=e.target.value.trim();qT=setTimeout(()=>searchTMDB(q),350)});
 $('#addForm').addEventListener('submit',e=>{e.preventDefault();clearTimeout(qT);searchTMDB($('#addQ').value.trim());$('#addQ').blur()});
