@@ -95,6 +95,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .addwho{margin:6px 0 4px;color:var(--blush);font-weight:600;font-size:14px}
 .subk{margin:4px 0 18px;display:flex;width:max-content;max-width:100%}.subk button{white-space:nowrap;padding:10px 14px}
 .provs{position:absolute;left:8px;bottom:8px;display:flex;gap:4px;z-index:2}.provs img{width:26px;height:26px;border-radius:7px;box-shadow:0 2px 8px #000a;border:1px solid #ffffff30}
+.pbox{margin:14px 0 6px;padding:14px 16px 4px;border:1px solid var(--line);border-radius:18px;background:#ffffff06}.pbox .ph{margin:0 0 12px;font-size:24px}
 .pgrp{margin-bottom:14px}.plist{display:flex;flex-wrap:wrap;gap:12px}.pv{display:flex;flex-direction:column;align-items:center;gap:5px;width:64px;text-align:center}.pv img{width:52px;height:52px;border-radius:13px;box-shadow:0 6px 16px -6px #000;border:1px solid #ffffff22}.pv small{font-size:11px;line-height:1.2;color:var(--mute)}
 .gbar{padding:0 clamp(18px,3.4vw,38px) 18px}.ghead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-weight:700;color:var(--blush)}.kind.mini2 button{padding:7px 12px;min-height:34px;font-size:13px}.gbar .chips{gap:8px}.gbar .chip{min-height:36px;padding:6px 12px;font-size:14px}
 .dhead{padding:0 clamp(18px,3.4vw,38px);margin:0 0 14px;font-weight:700;font-size:15px}
@@ -505,7 +506,7 @@ function render(){renderKind();
   }
   $('#grid').innerHTML=l.map((f,i)=>{const a=avg(f.id);
     const flag=f.recomendado_por&&f.status!=='visto'?`<span class="badge r">💌 de ${esc(String(nome(f.recomendado_por)).split(' ')[0])}</span>`:f.status==='visto'&&!val(mine(f.id))?'<span class="badge r">Avaliar</span>':'';
-    return`<button class="card" data-id="${esc(f.id)}" style="animation-delay:${Math.min(i,14)*45}ms" type="button"><div class="cover">${poster(f)}${flag}${provBadges(f)}${a?`<span class="badge">${fmt(a)}<small style="opacity:.6;font-weight:600">/10</small></span>`:''}</div><div class="meta"><b>${esc(f.titulo)}</b><span>${esc([f.ano,kindOf(f)==='serie'&&epsOf(f.id).size?epsOf(f.id).size+' ep. vistos':(f.generos||[])[0]].filter(Boolean).join(' · '))}</span></div></button>`}).join('');
+    return`<button class="card" data-id="${esc(f.id)}" style="animation-delay:${Math.min(i,14)*45}ms" type="button"><div class="cover">${poster(f)}${flag}${a?`<span class="badge">${fmt(a)}<small style="opacity:.6;font-weight:600">/10</small></span>`:''}</div><div class="meta"><b>${esc(f.titulo)}</b><span>${esc([f.ano,kindOf(f)==='serie'&&epsOf(f.id).size?epsOf(f.id).size+' ep. vistos':(f.generos||[])[0]].filter(Boolean).join(' · '))}</span></div></button>`}).join('');
 }
 
 /* ficha */
@@ -527,10 +528,10 @@ function renderDet(){
   <div class="dbody"><div class="left"><div class="cover">${poster(f,'w500')}</div></div>
   <div><h2 class="dh">${esc(f.titulo)}</h2><p class="sub">${esc([f.original&&f.original!==f.titulo?f.original:'',f.ano,kindOf(f)==='serie'?(f.temporadas?f.temporadas+(f.temporadas>1?' temporadas':' temporada'):''):(f.duracao?f.duracao+' min':'')].filter(Boolean).join('  ·  '))}</p>
   <div class="pills">${(f.generos||[]).map(g=>`<span class="pill">${esc(g)}</span>`).join('')}</div>
+  <div class="pbox">${provSection(f)}</div>
   ${f.diretor?`<p style="margin:6px 0"><span style="color:var(--mute)">${kindOf(f)==='serie'?'Criação':'Direção'}</span>&nbsp; ${esc(f.diretor)}</p>`:''}${(f.elenco||[]).length?`<p style="margin:6px 0"><span style="color:var(--mute)">Elenco</span>&nbsp; ${esc(f.elenco.join(', '))}</p>`:''}
   ${f.recomendado_por?`<p style="margin:10px 0 0;color:var(--blush);font-weight:600">💌 Recomendação de ${esc(nome(f.recomendado_por))}${f.dono?` para ${esc(nome(f.dono))}`:''}</p>`:''}
   ${f.sinopse?`<p style="margin:14px 0 0;max-width:62ch">${esc(f.sinopse)}</p>`:''}
-  ${provSection(f)}
   <div class="row">${visto?`<button class="btn sm" data-st="quero" type="button">Voltar para a fila</button>`:`<button class="btn sm rose" data-st="visto" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Marcar como assistido</button>`}${trailerBtn(f,true)}<button class="btn sm" id="del" type="button">${S.confirmDel?'Confirmar remoção':'Remover'}</button></div>
   ${kindOf(f)==='serie'?epsSection(f):''}
   ${visto&&ro?roTicket(f,cur):visto?`<h4>${dono?'Avaliação individual':'Avaliação do casal'}</h4>
@@ -567,12 +568,12 @@ function provPump(){while(provBusy<4&&provWait.length){const f=provWait.shift();
   }).catch(e=>{console.error(e);S.provQ.delete(k)}).finally(()=>{provBusy--;provPump()})}}
 const provLogo=(p,sz='w92')=>`<img src="${IMG}${sz}${esc(p.l)}" alt="${esc(p.n)}" title="${esc(p.n)}" loading="lazy">`;
 function provBadges(f){const d=provCached(f);if(!d||d.none)return'';const l=(d.flat.length?d.flat:d.free).slice(0,3);return l.length?`<span class="provs">${l.map(p=>provLogo(p)).join('')}</span>`:''}
-function provPaint(f){document.querySelectorAll(`.card[data-id="${CSS.escape(f.id)}"] .cover`).forEach(c=>{c.querySelector('.provs')?.remove();c.insertAdjacentHTML('beforeend',provBadges(f))})}
-function provSection(f){
-  if(!f.tmdb_id)return'';const d=provCached(f);if(d===undefined){provFetch(f);return'<h4>Onde assistir</h4><p class="note">Procurando onde assistir…</p>'}
+function provPaint(f){return;document.querySelectorAll(`.card[data-id="${CSS.escape(f.id)}"] .cover`).forEach(c=>{c.querySelector('.provs')?.remove();c.insertAdjacentHTML('beforeend',provBadges(f))})}
+function provSection(f){const H=t=>`<h4 class="ph">${t}</h4>`;
+  if(!f.tmdb_id)return'';const d=provCached(f);if(d===undefined){provFetch(f);return H('Onde assistir')+'<p class="note">Procurando onde assistir…</p>'}
   const grp=(t,a)=>a.length?`<div class="pgrp"><span class="lab" style="margin:0 0 8px">${t}</span><div class="plist">${a.map(p=>`<span class="pv">${provLogo(p)}<small>${esc(p.n)}</small></span>`).join('')}</div></div>`:'';
   const body=d.none?'':grp('Na assinatura',d.flat)+grp('Grátis',d.free)+grp('Alugar',d.rent)+grp('Comprar',d.buy);
-  return`<h4>Onde assistir <span style="color:var(--mute);font-size:.7em">no Brasil</span></h4>${body||`<p class="note">Ainda não está disponível em nenhum streaming no Brasil.</p>`}
+  return`${H('Onde assistir <span style="color:var(--mute);font-size:.7em">no Brasil</span>')}${body||`<p class="note">Ainda não está disponível em nenhum streaming no Brasil.</p>`}
   <p class="note" style="font-size:12px;margin-top:6px">${d.link?`<a href="${esc(d.link)}" target="_blank" rel="noopener" style="color:var(--blush)">Ver todas as opções e links</a> · `:''}Dados de onde assistir: JustWatch, via TMDB.</p>`;
 }
 
