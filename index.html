@@ -377,8 +377,9 @@ const trailerBtn=(f,sm)=>f.trailer?`<a class="btn${sm?' sm':''}" href="https://w
 
 const val=r=>r?+r.nota||0:0;
 const ratesOf=id=>[...S.rates.values()].filter(r=>r.filme_id===id&&val(r)>0);
-const avg=id=>{const r=ratesOf(id);return r.length?r.reduce((s,x)=>s+val(x),0)/r.length:0};
-const mine=id=>S.rates.get(id+'__'+S.user?.id);
+const casal=id=>ratesOf(id).sort((a,b)=>ts(b.em)-ts(a.em))[0];
+const avg=id=>val(casal(id));
+const mine=id=>casal(id);
 const nome=u=>(S.perfis[u]||'').split(' ')[0]||'Alguém';
 const dur=m=>m?Math.floor(m/60)+'h'+String(m%60).padStart(2,'0'):'';
 
@@ -463,7 +464,7 @@ function renderDet(){
   const ta=$('#com');if(ta&&S.draft)S.draft.comentario=ta.value;
   const f=S.films.get(S.open);if(!f){closeAll();return}
   const d=S.draft;const visto=f.status==='visto';
-  const others=[...S.rates.values()].filter(r=>r.filme_id===f.id&&r.user_id!==S.user.id&&val(r));
+  const cur=casal(f.id);const soMinhas=ratesOf(f.id).every(r=>r.user_id===S.user.id);
   const a=avg(f.id);
   const chip=(t,k,c)=>`<button type="button" class="chip ${c} ${d[k].has(t)?'on':''}" data-chip="${k}" data-v="${esc(t)}" aria-pressed="${d[k].has(t)}">${esc(t)}</button>`;
   $('#det').innerHTML=`<button class="x" data-close aria-label="Fechar">×</button>
@@ -474,17 +475,15 @@ function renderDet(){
   ${f.diretor?`<p style="margin:6px 0"><span style="color:var(--mute)">Direção</span>&nbsp; ${esc(f.diretor)}</p>`:''}${(f.elenco||[]).length?`<p style="margin:6px 0"><span style="color:var(--mute)">Elenco</span>&nbsp; ${esc(f.elenco.join(', '))}</p>`:''}
   ${f.sinopse?`<p style="margin:14px 0 0;max-width:62ch">${esc(f.sinopse)}</p>`:''}
   <div class="row">${visto?`<button class="btn sm" data-st="quero" type="button">Voltar para a fila</button>`:`<button class="btn sm rose" data-st="visto" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Marcar como assistido</button>`}${trailerBtn(f,true)}<button class="btn sm" id="del" type="button">${S.confirmDel?'Confirmar remoção':'Remover'}</button></div>
-  ${visto?`<h4>Avaliações${a?` <span style="color:var(--rose)">· ${fmt(a)}/10 do casal</span>`:''}</h4>
-  <div class="ticket mine"><div class="who"><span class="av">${esc(ini(nome(S.user.id)))}</span>Sua nota<em>${mine(f.id)?'salva — pode editar':'ainda não avaliado'}</em></div>
+  ${visto?`<h4>Avaliação do casal</h4>
+  <div class="ticket mine"><div class="who"><span class="av">♥</span>Nota de vocês dois<em>${cur?`salva por ${esc(nome(cur.user_id))} em ${new Date(cur.em).toLocaleDateString('pt-BR')} — qualquer um pode editar`:'ainda não avaliado'}</em></div>
   <div class="score"><div class="big"><b>${d.nota||'–'}</b><small>/10</small></div><span class="slab">${d.nota?LBL[d.nota]:'Toque na barra para dar a nota'}</span></div>
-  <div class="scale" role="radiogroup" aria-label="Sua nota de 1 a 10">${Array.from({length:10},(_,k)=>k+1).map(n=>`<button type="button" class="seg ${n<=d.nota?'on':''}" data-nota="${n}" role="radio" aria-checked="${n===d.nota}" aria-label="Nota ${n}" style="--k:${n}"><span>${n}</span></button>`).join('')}</div>
+  <div class="scale" role="radiogroup" aria-label="Nota do casal de 1 a 10">${Array.from({length:10},(_,k)=>k+1).map(n=>`<button type="button" class="seg ${n<=d.nota?'on':''}" data-nota="${n}" role="radio" aria-checked="${n===d.nota}" aria-label="Nota ${n}" style="--k:${n}"><span>${n}</span></button>`).join('')}</div>
   <span class="lab">O que funcionou</span><div class="chips">${POS.map(t=>chip(t,'gostou','p')).join('')}</div>
   <span class="lab">O que não funcionou</span><div class="chips">${NEG.map(t=>chip(t,'naoGostou','n')).join('')}</div>
   <label class="lab" for="com">Por que gostou — ou não gostou?</label><textarea id="com" placeholder="Conta aqui o que achou…">${esc(d.comentario)}</textarea>
-  <div class="row"><button class="btn rose" id="save" type="button">Salvar avaliação</button>${mine(f.id)?'<button class="btn" id="unrate" type="button">Apagar minha nota</button>':''}</div></div>
-  ${others.map(r=>`<div class="ticket"><div class="who"><span class="av" style="background:linear-gradient(135deg,#7c6cff,#2f2a7a)">${esc(ini(nome(r.user_id)))}</span>${esc(nome(r.user_id))}<em>${new Date(r.em).toLocaleDateString('pt-BR')}</em></div><div class="score ro"><div class="big"><b>${val(r)}</b><small>/10</small></div><span class="slab">${LBL[val(r)]||''}</span></div><div class="scale ro" aria-hidden="true">${Array.from({length:10},(_,k)=>`<i class="seg ${k<val(r)?'on':''}" style="--k:${k+1}"></i>`).join('')}</div>
-  <div>${(r.gostou||[]).map(t=>`<span class="tag p">+ ${esc(t)}</span>`).join('')}${(r.nao_gostou||[]).map(t=>`<span class="tag n">− ${esc(t)}</span>`).join('')}</div>${r.comentario?`<p class="quote">“${esc(r.comentario)}”</p>`:''}</div>`).join('')}
-  ${!others.length?'<p class="note">Quando seu amor avaliar, a nota aparece aqui.</p>':''}`:'<p class="note" style="margin-top:24px">Depois de assistir, marque como assistido para os dois avaliarem.</p>'}
+  <div class="row"><button class="btn rose" id="save" type="button">Salvar avaliação</button>${cur&&soMinhas?'<button class="btn" id="unrate" type="button">Apagar nota</button>':''}</div></div>
+  `:'<p class="note" style="margin-top:24px">Depois de assistir, marque como assistido para os dois avaliarem.</p>'}
   <div class="row" style="margin-top:30px"><button class="btn" data-close type="button" style="width:100%;justify-content:center">Fechar</button></div>
   </div></div>`;
 }
