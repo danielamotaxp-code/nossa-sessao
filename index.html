@@ -460,7 +460,8 @@ function renderRibbon(){
   const mins=vistos.reduce((s,f)=>s+(+f.duracao||0),0);
   $('#stats').innerHTML=`<span><b>${vistos.length}</b>assistidos</span><span><b>${rated.length?fmt(rated.reduce((a,b)=>a+b,0)/rated.length):'–'}</b>nota média</span><span><b>${Math.round(mins/60)}h</b>${S.kind==='serie'?'de episódios':'de cinema juntos'}</span>`;
   const byV=a=>a.filter(f=>f.status==='visto').sort((x,y)=>(ts(y.visto_em)||ts(y.added_at))-(ts(x.visto_em)||ts(x.added_at)));
-  const rows=[{lab:S.kind==='serie'?'Assistimos juntos':'Vimos juntos',av:'♥',l:byV(all)}].concat(pessoas().map(([uid,nm])=>({lab:`${uid===S.user.id?'Só eu':'Só '+String(nm).split(' ')[0]}`,av:ini(nm),l:byV(pessoal(uid))}))).filter(r=>r.l.length);
+  const qv=all.filter(f=>f.status!=='visto').sort((x,y)=>ts(y.added_at)-ts(x.added_at));
+  const rows=[{lab:S.kind==='serie'?'Assistimos juntos':'Vimos juntos',av:'♥',l:byV(all)},{lab:'Queremos ver',av:'★',l:qv}].concat(pessoas().map(([uid,nm])=>({lab:`${uid===S.user.id?'Só eu':'Só '+String(nm).split(' ')[0]}`,av:ini(nm),l:byV(pessoal(uid))}))).filter(r=>r.l.length);
   const key=S.kind+'#'+rows.map(r=>r.lab+':'+r.l.map(f=>f.id+f.poster).join(',')).join('|');if(key===S.ribbonKey)return;S.ribbonKey=key;
   const box=$('#marqs');
   box.innerHTML=rows.length?rows.map(r=>`<div class="mrow"><div class="wrap mlab"><span class="pav">${esc(r.av)}</span>${esc(r.lab)}<em>${r.l.length}</em></div><div class="marq"><div class="track" data-mq></div></div></div>`).join(''):`<p class="wrap note" style="margin:0 auto 10px">Quando vocês marcarem ${S.kind==='serie'?'séries':'filmes'} como assistid${S.kind==='serie'?'as':'os'}, as capas aparecem aqui.</p>`;
