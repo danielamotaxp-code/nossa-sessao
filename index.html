@@ -92,6 +92,7 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .rowT h3{font:400 34px/1.1 "Instrument Serif",serif;margin:0}
 .stats{display:flex;gap:22px;color:var(--mute);font-size:14px;flex-wrap:wrap}
 .stats b{color:var(--ink);font-size:18px;margin-right:4px}
+.mrow{margin-bottom:4px}.mlab{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:var(--blush);margin-top:6px}.mlab em{font-style:normal;color:var(--mute);font-weight:600;font-size:13px}.mrow .marq{padding:10px 0 16px}
 .marq{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);padding:16px 0 22px}
 .track{display:flex;gap:16px;width:max-content;will-change:transform;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
 .track.drag{cursor:grabbing}.track img{-webkit-user-drag:none;pointer-events:none}
@@ -182,6 +183,7 @@ h4{font:400 30px/1.2 "Instrument Serif",serif;margin:30px 0 8px}
 .eps{display:grid;border-top:1px solid var(--line)}.ep{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #ffffff0d;cursor:pointer;min-height:48px}.ep:last-child{border-bottom:0}
 .ep input{appearance:none;-webkit-appearance:none;width:24px;height:24px;border-radius:7px;border:2px solid #ffffff40;flex:none;display:grid;place-items:center;margin:0;cursor:pointer}.ep input:checked{background:var(--rose);border-color:var(--rose)}.ep input:checked::after{content:'✓';color:#fff;font-size:15px;font-weight:800}
 .ep .en{color:var(--mute);font-variant-numeric:tabular-nums;width:22px;text-align:right;flex:none}.ep .et{flex:1;line-height:1.3}.ep .et small{display:block;color:var(--mute);font-size:12px}.ep.on .et{color:var(--mute)}.ep.fut{opacity:.55}
+.btn.rec{border-color:#ff4f7255;color:#ffd0da}
 .chip:hover{background:#ffffff14}
 .chip.ed{display:inline-flex;align-items:center;padding:0;overflow:hidden;border-color:#ffffff30}.chip.ed>button{padding:8px 12px;min-height:40px;color:inherit;background:none;border:0;font:inherit;cursor:pointer}.chip.ed .x2{border-left:1px solid #ffffff22;color:#ffb3c2}
 .chip.rm{border-color:var(--rose);color:#ffd0da;background:#ff4f7214}.chip.edit{border-style:dashed;color:var(--mute)}
@@ -315,7 +317,7 @@ footer a{color:var(--blush)}
 
 <section class="ribbon" id="ribbon">
   <div class="wrap rowT"><h3>Na nossa tela</h3><div class="stats" id="stats"></div></div>
-  <div class="marq"><div class="track" id="track"></div></div>
+  <div id="marqs"></div>
 </section>
 
 <div class="dock"><div class="wrap">
@@ -354,7 +356,6 @@ const C=window.APP_CONFIG||{};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const IMG='https://image.tmdb.org/t/p/';
-const MQ={pos:0,v:0,dur:60,drag:false,hover:false,moved:0,lx:0,lt:0,idle:0};
 const kindOf=f=>f.tipo==='serie'?'serie':'filme';
 const W=()=>S.kind==='serie'?{um:'série',uns:'séries',o:'a',U:'Séries'}:{um:'filme',uns:'filmes',o:'o',U:'Filmes'};
 const mine_kind=()=>[...S.films.values()].filter(f=>!f.dono&&kindOf(f)===S.kind);
@@ -454,14 +455,18 @@ function pause(p){S.paused=p;$('#hero').classList.toggle('paused',p);if(p)clearT
 
 function renderRibbon(){
   const all=mine_kind().sort((a,b)=>ts(b.added_at)-ts(a.added_at));
-  $('#ribbon').style.display=S.films.size?'':'none';$('.marq').style.display=all.length?'':'none';
+  $('#ribbon').style.display=S.films.size?'':'none';
   const vistos=all.filter(f=>f.status==='visto');const rated=vistos.map(f=>avg(f.id)).filter(Boolean);
   const mins=vistos.reduce((s,f)=>s+(+f.duracao||0),0);
   $('#stats').innerHTML=`<span><b>${vistos.length}</b>assistidos</span><span><b>${rated.length?fmt(rated.reduce((a,b)=>a+b,0)/rated.length):'–'}</b>nota média</span><span><b>${Math.round(mins/60)}h</b>${S.kind==='serie'?'de episódios':'de cinema juntos'}</span>`;
-  const key=all.map(f=>f.id+f.poster).join('|');if(key===S.ribbonKey)return;S.ribbonKey=key;
-  let base=all;while(base.length&&base.length<8)base=base.concat(all);
-  const one=base.map(f=>`<button class="mini" data-id="${esc(f.id)}" type="button" aria-label="${esc(f.titulo)}"><div class="cover">${poster(f,'w185')}</div></button>`).join('');
-  $('#track').innerHTML=one+one;MQ.dur=Math.max(30,base.length*4.5);
+  const byV=a=>a.filter(f=>f.status==='visto').sort((x,y)=>(ts(y.visto_em)||ts(y.added_at))-(ts(x.visto_em)||ts(x.added_at)));
+  const rows=[{lab:S.kind==='serie'?'Assistimos juntos':'Vimos juntos',av:'♥',l:byV(all)}].concat(pessoas().map(([uid,nm])=>({lab:`${uid===S.user.id?'Só eu':'Só '+String(nm).split(' ')[0]}`,av:ini(nm),l:byV(pessoal(uid))}))).filter(r=>r.l.length);
+  const key=S.kind+'#'+rows.map(r=>r.lab+':'+r.l.map(f=>f.id+f.poster).join(',')).join('|');if(key===S.ribbonKey)return;S.ribbonKey=key;
+  const box=$('#marqs');
+  box.innerHTML=rows.length?rows.map(r=>`<div class="mrow"><div class="wrap mlab"><span class="pav">${esc(r.av)}</span>${esc(r.lab)}<em>${r.l.length}</em></div><div class="marq"><div class="track" data-mq></div></div></div>`).join(''):`<p class="wrap note" style="margin:0 auto 10px">Quando vocês marcarem ${S.kind==='serie'?'séries':'filmes'} como assistid${S.kind==='serie'?'as':'os'}, as capas aparecem aqui.</p>`;
+  box.querySelectorAll('.track').forEach((t,k)=>{const r=rows[k];let base=r.l;while(base.length&&base.length<8)base=base.concat(r.l);
+    const one=base.map(f=>`<button class="mini" data-id="${esc(f.id)}" type="button" aria-label="${esc(f.titulo)}"><div class="cover">${poster(f,'w185')}</div></button>`).join('');
+    t.innerHTML=one+one;mqAttach(t,Math.max(30,base.length*4.5),k%2?1:-1)});
 }
 function renderDuo(){
   const ids=Object.keys(S.perfis).sort((a,b)=>a===S.user?.id?-1:b===S.user?.id?1:0).slice(0,2);
@@ -485,7 +490,7 @@ function render(){renderKind();
     $('#grid').innerHTML=`<div class="empty"><b>${msg[0]}</b>${msg[1]}</div>`;return;
   }
   $('#grid').innerHTML=l.map((f,i)=>{const a=avg(f.id);
-    const flag=f.status==='visto'&&!val(mine(f.id))?'<span class="badge r">Avaliar</span>':'';
+    const flag=f.recomendado_por&&f.status!=='visto'?`<span class="badge r">💌 de ${esc(String(nome(f.recomendado_por)).split(' ')[0])}</span>`:f.status==='visto'&&!val(mine(f.id))?'<span class="badge r">Avaliar</span>':'';
     return`<button class="card" data-id="${esc(f.id)}" style="animation-delay:${Math.min(i,14)*45}ms" type="button"><div class="cover">${poster(f)}${flag}${a?`<span class="badge">${fmt(a)}<small style="opacity:.6;font-weight:600">/10</small></span>`:''}</div><div class="meta"><b>${esc(f.titulo)}</b><span>${esc([f.ano,kindOf(f)==='serie'&&epsOf(f.id).size?epsOf(f.id).size+' ep. vistos':(f.generos||[])[0]].filter(Boolean).join(' · '))}</span></div></button>`}).join('');
 }
 
@@ -509,6 +514,7 @@ function renderDet(){
   <div><h2 class="dh">${esc(f.titulo)}</h2><p class="sub">${esc([f.original&&f.original!==f.titulo?f.original:'',f.ano,kindOf(f)==='serie'?(f.temporadas?f.temporadas+(f.temporadas>1?' temporadas':' temporada'):''):(f.duracao?f.duracao+' min':'')].filter(Boolean).join('  ·  '))}</p>
   <div class="pills">${(f.generos||[]).map(g=>`<span class="pill">${esc(g)}</span>`).join('')}</div>
   ${f.diretor?`<p style="margin:6px 0"><span style="color:var(--mute)">${kindOf(f)==='serie'?'Criação':'Direção'}</span>&nbsp; ${esc(f.diretor)}</p>`:''}${(f.elenco||[]).length?`<p style="margin:6px 0"><span style="color:var(--mute)">Elenco</span>&nbsp; ${esc(f.elenco.join(', '))}</p>`:''}
+  ${f.recomendado_por?`<p style="margin:10px 0 0;color:var(--blush);font-weight:600">💌 Recomendação de ${esc(nome(f.recomendado_por))}${f.dono?` para ${esc(nome(f.dono))}`:''}</p>`:''}
   ${f.sinopse?`<p style="margin:14px 0 0;max-width:62ch">${esc(f.sinopse)}</p>`:''}
   <div class="row">${visto?`<button class="btn sm" data-st="quero" type="button">Voltar para a fila</button>`:`<button class="btn sm rose" data-st="visto" type="button"><svg class="i" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>Marcar como assistido</button>`}${trailerBtn(f,true)}<button class="btn sm" id="del" type="button">${S.confirmDel?'Confirmar remoção':'Remover'}</button></div>
   ${kindOf(f)==='serie'?epsSection(f):''}
@@ -625,17 +631,17 @@ function searchTMDB(q){
     if(my!==qN)return;
     S.found=(j.results||[]).filter(r=>(r.media_type==='movie'||r.media_type==='tv')&&(r.poster_path||r.vote_count>20)).map(r=>({...r,tipo:r.media_type==='tv'?'serie':'filme',title:r.title||r.name,original_title:r.original_title||r.original_name,release_date:r.release_date||r.first_air_date})).sort((a,b)=>(b.tipo===S.kind)-(a.tipo===S.kind)).slice(0,14);
     if(!S.found.length){box.innerHTML='<p class="note pad" style="margin:0 0 20px">Nada encontrado. Tente o título original.</p>';return}
-    box.innerHTML=`<div class="res">${S.found.map((f,i)=>{const dn=tabUid()===S.user.id?S.user.id:null;const have=[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&(x.dono||null)===dn);return`<div style="animation-delay:${i*50}ms"><div class="cover">${f.poster_path?img(f.poster_path,'w342','',f.title):`<div class="nop">${esc(f.title)}</div>`}</div><div class="meta"><b>${esc(f.title)}</b><span>${esc([f.tipo==='serie'?'Série':'Filme',(f.release_date||'').slice(0,4),f.original_title!==f.title?f.original_title:''].filter(Boolean).join(' · '))}</span></div><div class="row" style="margin-top:10px">${have?'<span class="note" style="margin:0">Já está na lista</span>':`<button class="btn sm rose" data-pick="${i}" data-as="quero" type="button">Quero ver</button><button class="btn sm" data-pick="${i}" data-as="visto" type="button">${dn?'Já vi':'Já vimos'}</button>`}</div></div>`}).join('')}</div>`;
+    box.innerHTML=`<div class="res">${S.found.map((f,i)=>{const dn=tabUid()===S.user.id?S.user.id:null;const have=[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&(x.dono||null)===dn);return`<div style="animation-delay:${i*50}ms"><div class="cover">${f.poster_path?img(f.poster_path,'w342','',f.title):`<div class="nop">${esc(f.title)}</div>`}</div><div class="meta"><b>${esc(f.title)}</b><span>${esc([f.tipo==='serie'?'Série':'Filme',(f.release_date||'').slice(0,4),f.original_title!==f.title?f.original_title:''].filter(Boolean).join(' · '))}</span></div><div class="row" style="margin-top:10px">${have?'<span class="note" style="margin:0">Já está na lista</span>':`<button class="btn sm rose" data-pick="${i}" data-as="quero" type="button">Quero ver</button><button class="btn sm" data-pick="${i}" data-as="visto" type="button">${dn?'Já vi':'Já vimos'}</button>`}${pessoas().filter(([uid])=>uid!==S.user.id).map(([uid,nm])=>[...S.films.values()].some(x=>x.tmdb_id===f.id&&kindOf(x)===f.tipo&&x.dono===uid)?`<span class="note" style="margin:0">Já está na lista de ${esc(String(nm).split(' ')[0])}</span>`:`<button class="btn sm rec" data-pick="${i}" data-as="rec:${uid}" type="button">💌 Recomendar para ${esc(String(nm).split(' ')[0])}</button>`).join('')}</div></div>`}).join('')}</div>`;
   }).catch(e=>{if(my!==qN)return;console.error(e);box.innerHTML=`<p class="note pad" style="margin:0 0 20px">${/401/.test(e.message)?'A chave do TMDB no config.js não está certa.':'Não consegui buscar agora. Verifique a internet.'}</p>`});
 }
 async function addFilm(r,st,btn){
   if(S.busy)return;S.busy=true;btn.innerHTML='<span class="spin"></span>Adicionando';
   try{
-    const d=await details(r.id,r.tipo);const now=new Date().toISOString();const dono=tabUid()===S.user.id?S.user.id:null;S.kind=r.tipo;try{localStorage.setItem('kind',S.kind)}catch(_){}
-    const{data,error}=await sb.from('filmes').insert({...d,dono,status:st,added_by:S.user.id,added_at:now,visto_em:st==='visto'?now:null}).select().single();
-    if(error)throw error;await loadAll();closeAll();if(!dono)S.tab=st==='visto'?'visto':'quero';S.hi=0;S.heroKey='';render();window.scrollTo({top:0});
+    const d=await details(r.id,r.tipo);const now=new Date().toISOString();const rec=st.startsWith('rec:')?st.slice(4):null;const dono=rec||(tabUid()===S.user.id?S.user.id:null);if(rec)st='quero';S.kind=r.tipo;try{localStorage.setItem('kind',S.kind)}catch(_){}
+    const{data,error}=await sb.from('filmes').insert({...d,dono,recomendado_por:rec?S.user.id:null,status:st,added_by:S.user.id,added_at:now,visto_em:st==='visto'?now:null}).select().single();
+    if(error)throw error;await loadAll();closeAll();if(rec){toast(`Recomendado para ${String(nome(rec)).split(' ')[0]} 💌`);return}if(!dono)S.tab=st==='visto'?'visto':'quero';S.hi=0;S.heroKey='';render();window.scrollTo({top:0});
     toast(st==='visto'?'Adicionado aos assistidos — avalie!':'Adicionado à fila');if(st==='visto'&&data)setTimeout(()=>openDet(data.id),350);
-  }catch(e){fail(e);btn.textContent=st==='visto'?'Já vimos':'Quero ver'}finally{S.busy=false}
+  }catch(e){fail(e);btn.textContent=st.startsWith('rec:')?'Recomendar':st==='visto'?'Já vimos':'Quero ver'}finally{S.busy=false}
 }
 
 
@@ -705,25 +711,28 @@ $('#tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t){S
 $('#q').addEventListener('input',e=>{S.q=e.target.value;render()});
 $('#sort').addEventListener('change',e=>{S.sort=e.target.value;render()});
 $('#grid').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openDet(c.dataset.id)});
-/* carrossel de capas: anda sozinho e pode ser arrastado */
-(()=>{const t=$('#track'),still=matchMedia('(prefers-reduced-motion: reduce)').matches;let last=performance.now();
-  const half=()=>t.scrollWidth/2||1;
-  const wrap=()=>{const h=half();MQ.pos=((MQ.pos%h)-h)%h};
-  function tick(now){const dt=Math.min(.05,(now-last)/1000);last=now;
-    if(!MQ.drag){const auto=still||MQ.hover||now<MQ.idle?0:-half()/MQ.dur;
-      if(Math.abs(MQ.v)>5){MQ.pos+=MQ.v*dt;MQ.v*=Math.pow(.04,dt)}else{MQ.v=0;MQ.pos+=auto*dt}}
-    wrap();t.style.transform=`translate3d(${MQ.pos}px,0,0)`;requestAnimationFrame(tick)}
-  requestAnimationFrame(tick);
-  t.addEventListener('pointerdown',e=>{if(e.button>0)return;MQ.drag=true;MQ.moved=0;MQ.v=0;MQ.lx=e.clientX;MQ.lt=performance.now();MQ.sx=e.clientX;MQ.sy=e.clientY;MQ.pid=e.pointerId});
-  t.addEventListener('pointermove',e=>{if(!MQ.drag||e.pointerId!==MQ.pid)return;const dx=e.clientX-MQ.lx,now=performance.now();
-    if(!MQ.moved&&Math.abs(e.clientY-MQ.sy)>Math.abs(e.clientX-MQ.sx)+4&&Math.abs(e.clientX-MQ.sx)<8){MQ.drag=false;return}
-    MQ.moved+=Math.abs(dx);if(MQ.moved>6&&!t.classList.contains('drag')){t.classList.add('drag');try{t.setPointerCapture(e.pointerId)}catch(_){}}
-    MQ.pos+=dx;const ddt=Math.max(1,now-MQ.lt)/1000;MQ.v=.7*MQ.v+.3*(dx/ddt);MQ.lx=e.clientX;MQ.lt=now});
-  const end=e=>{if(!MQ.drag)return;MQ.drag=false;t.classList.remove('drag');if(performance.now()-MQ.lt>90)MQ.v=0;MQ.v=Math.max(-3000,Math.min(3000,MQ.v));MQ.idle=performance.now()+1500};
+/* carrosséis de capas: andam sozinhos e podem ser arrastados */
+function mqAttach(t,dur,dir){
+  const st=t._mq={pos:0,v:0,dur,dir,drag:false,hover:false,moved:0,lx:0,lt:0,idle:0};
+  t.addEventListener('pointerdown',e=>{if(e.button>0)return;st.drag=true;st.moved=0;st.v=0;st.lx=e.clientX;st.lt=performance.now();st.sx=e.clientX;st.sy=e.clientY;st.pid=e.pointerId});
+  t.addEventListener('pointermove',e=>{if(!st.drag||e.pointerId!==st.pid)return;const dx=e.clientX-st.lx,now=performance.now();
+    if(!st.moved&&Math.abs(e.clientY-st.sy)>Math.abs(e.clientX-st.sx)+4&&Math.abs(e.clientX-st.sx)<8){st.drag=false;return}
+    st.moved+=Math.abs(dx);if(st.moved>6&&!t.classList.contains('drag')){t.classList.add('drag');try{t.setPointerCapture(e.pointerId)}catch(_){}}
+    st.pos+=dx;const ddt=Math.max(1,now-st.lt)/1000;st.v=.7*st.v+.3*(dx/ddt);st.lx=e.clientX;st.lt=now});
+  const end=()=>{if(!st.drag)return;st.drag=false;t.classList.remove('drag');if(performance.now()-st.lt>90)st.v=0;st.v=Math.max(-3000,Math.min(3000,st.v));st.idle=performance.now()+1500};
   t.addEventListener('pointerup',end);t.addEventListener('pointercancel',end);t.addEventListener('lostpointercapture',end);
-  const m=t.parentElement;m.addEventListener('mouseenter',()=>MQ.hover=true);m.addEventListener('mouseleave',()=>MQ.hover=false);
-  t.addEventListener('click',e=>{if(MQ.moved>6){e.preventDefault();e.stopPropagation();MQ.moved=0;return}const c=e.target.closest('.mini');if(c)openDet(c.dataset.id)},true);
-})();
+  const m=t.parentElement;m.addEventListener('mouseenter',()=>st.hover=true);m.addEventListener('mouseleave',()=>st.hover=false);
+  t.addEventListener('click',e=>{if(st.moved>6){e.preventDefault();e.stopPropagation();st.moved=0;return}const c=e.target.closest('.mini');if(c)openDet(c.dataset.id)},true);
+}
+(()=>{const still=matchMedia('(prefers-reduced-motion: reduce)').matches;let last=performance.now();
+  function tick(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+    for(const t of document.querySelectorAll('.track[data-mq]')){const st=t._mq;if(!st)continue;const h=t.scrollWidth/2||1;
+      if(!st.drag){const auto=still||st.hover||now<st.idle?0:st.dir*h/st.dur;
+        if(Math.abs(st.v)>5){st.pos+=st.v*dt;st.v*=Math.pow(.04,dt)}else{st.v=0;st.pos+=auto*dt}}
+      st.pos=((st.pos%h)-h)%h;t.style.transform=`translate3d(${st.pos}px,0,0)`}
+    requestAnimationFrame(tick)}
+  requestAnimationFrame(tick)})();
+
 $('#grid').addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const c=e.target.closest('.card');if(!c)return;const cv=c.querySelector('.cover');const r=cv.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;cv.style.setProperty('--ry',((x-.5)*14)+'deg');cv.style.setProperty('--rx',((.5-y)*12)+'deg');cv.style.setProperty('--mx',x*100+'%');cv.style.setProperty('--my',y*100+'%')});
 $('#grid').addEventListener('pointerout',e=>{const c=e.target.closest('.card');if(c&&!c.contains(e.relatedTarget)){const cv=c.querySelector('.cover');cv.style.setProperty('--rx','0deg');cv.style.setProperty('--ry','0deg')}});
 const openAdd=()=>{$('#addT').textContent=tabUid()===S.user.id?'Adicionar à sua lista individual':'Qual filme ou série?';$('#ovAdd').classList.add('on');$('#results').innerHTML='';$('#addQ').value='';document.body.style.overflow='hidden';pause(true);setTimeout(()=>$('#addQ').focus(),60)};
